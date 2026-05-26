@@ -1,0 +1,1 @@
+When a registered user reconnects after disconnection, he directly gets on the home page with online and play with friends option. But when he reconnects, he should only see the option whether to continue or exit the last game, just like for guest users. Fix it.

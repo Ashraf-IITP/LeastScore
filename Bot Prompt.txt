@@ -1,0 +1,394 @@
+Hard Bot Specification 
+
+Design and implement a “Hard Difficulty” bot for a turn-based, least-score card game. The bot must simulate intelligent, human-like play using memory, probabilistic reasoning, opponent modeling, and risk-aware decision-making. The bot should not be perfectly optimal; controlled imperfections must be introduced to maintain fairness and realism.
+
+---
+
+## 1. Core Objectives
+
+The bot must:
+
+* Minimize its final hand score.
+* Form optimal card combinations (pairs, sequences, flushes as per rules).
+* Decide between drawing from visible discard or hidden deck using expected value.
+* Track known cards and infer unseen cards probabilistically.
+* Estimate opponent hand strength using observed behavior.
+* Declare strategically based on quantified risk.
+* Avoid helping opponents through poor discards.
+
+---
+
+## 2. Card Memory System
+
+Maintain a dynamic knowledge base of cards:
+
+* `seenCards`: All revealed cards (drawn + discarded)
+* `discardHistory`: Ordered list of discarded cards
+* `remainingDeckDistribution`: Probability distribution of unseen cards
+
+From this, compute:
+
+* Probability of drawing any specific card from the deck
+* Remaining count of each rank/suit
+
+---
+
+## 3. Hand Optimization Engine
+
+At every turn, compute the optimal grouping of the bot’s hand.
+
+Goal:
+
+* Minimize total score after forming valid combinations
+
+Constraints:
+
+* Respect game rules (valid sequences, pairs, etc.)
+
+Approach:
+
+* Use heuristic optimization (not brute force):
+
+  * Prioritize longer sequences over smaller sets
+  * Prefer combinations that reduce high-value cards
+  * Recalculate after every draw/discard
+
+---
+
+## 4. Draw Decision Logic (Expected Value Model)
+
+When choosing between:
+
+* Visible discard card (`C_visible`)
+* Hidden deck draw
+
+### Step 1: Evaluate Visible Card
+
+* Compute immediate score improvement if taken
+* Check if it completes or improves a combination
+
+### Step 2: Evaluate Hidden Draw (Expected Value)
+
+For all possible unseen cards:
+
+* Compute:
+  Expected Gain = Σ [P(card) × score_improvement(card)]
+
+Where:
+
+* P(card) = probability from remainingDeckDistribution
+* score_improvement(card) = reduction in hand score after optimal regrouping
+
+### Decision Rule:
+
+* Choose visible card if:
+  guaranteed_gain_visible > expected_gain_hidden
+* Else draw from deck
+
+---
+
+## 5. Opponent Modeling System
+
+For each opponent, maintain:
+
+* Cards discarded (frequency and pattern)
+* Suits avoided or preferred
+* Pickup behavior (what they choose to draw from discard)
+
+Infer:
+
+* Likely combinations they are building
+* Suits/ranks they do not need
+* Estimated score range
+
+Represent opponent score as:
+
+* `estimatedScoreRange = [min_possible, max_possible]`
+
+---
+
+## 6. Discard Strategy
+
+When discarding a card:
+
+Avoid:
+
+* Cards likely useful to opponents based on their behavior
+
+Prefer:
+
+* High-value cards not contributing to bot’s combinations
+* Cards from suits opponents are avoiding
+
+---
+
+## 7. Declaration Logic (Risk-Based)
+
+At each turn, evaluate whether to declare.
+
+### Step 1:
+
+Compute bot score → `S_bot`
+
+### Step 2:
+
+For each opponent:
+Estimate probability:
+
+* `P(opponent_score < S_bot)`
+
+### Step 3:
+
+Compute overall risk:
+
+* `Risk = probability that at least one opponent has a lower score`
+
+### Step 4: Decision Rule
+
+Bot declares if:
+
+* `Risk < threshold` (recommended: 15%–25%)
+  AND
+* Expected improvement from waiting is negligible
+
+---
+
+## 8. Controlled Imperfection (Humanization Layer)
+
+To avoid perfect play:
+
+Introduce:
+
+* 5–10% probability of suboptimal decisions
+* Slight noise in probability calculations
+* Occasional delayed declaration
+
+This ensures:
+
+* Realistic gameplay
+* Reduced player frustration
+
+---
+
+## 9. Difficulty Calibration Parameters
+
+Expose tunable parameters:
+
+* Risk threshold (e.g., 0.15–0.25)
+* Memory accuracy (100% for hard)
+* Decision noise factor
+* Aggression level (early vs late declaration)
+
+---
+
+## 10. Performance Constraints
+
+* All decisions must complete within real-time limits (<100ms preferred)
+* Avoid brute-force combinatorics where possible
+* Use cached evaluations where applicable
+
+---
+
+## 11. Summary Behavior
+
+A Hard Bot should:
+
+* Play consistently strong but not perfect
+* Make statistically sound decisions
+* Adapt to opponents
+* Take calculated risks
+* Avoid obvious mistakes
+* Feel human-like rather than mechanical
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Easy Bot Specification
+
+Design and implement an “Easy Difficulty” bot for a turn-based, least-score card game. The bot should simulate a beginner-level human player: it understands the rules and basic strategies but plays inconsistently, makes frequent mistakes, and lacks long-term planning. The goal is to create a bot that is **beatable, slightly unpredictable, and still believable**.
+
+---
+
+## 1. Core Objectives
+
+The bot must:
+
+* Attempt to minimize its hand score using simple strategies.
+* Form obvious combinations (pairs, sequences, etc.).
+* Prefer safe and straightforward decisions over optimal ones.
+* Exhibit inconsistent behavior via controlled mistakes.
+* Avoid advanced reasoning such as probability calculation or deep opponent modeling.
+
+---
+
+## 2. Memory System (Very Limited)
+
+Maintain minimal short-term memory:
+
+* `recentDiscards`: Last 2–3 cards discarded by any player
+* `selfPickedCards`: Cards the bot picked from discard pile
+
+The bot must NOT:
+
+* Track full deck composition
+* Estimate probabilities of unseen cards
+* Maintain long-term memory
+
+---
+
+## 3. Hand Evaluation Logic (Greedy)
+
+At each turn:
+
+* Identify obvious valid combinations (pairs, sequences, flushes)
+* Keep combinations that immediately reduce score
+* Do not restructure hand for future optimization
+
+Limitations:
+
+* Does not evaluate multiple grouping strategies deeply
+* May keep suboptimal combinations
+* May fail to break weak combos for better outcomes
+
+---
+
+## 4. Draw Decision Logic (Rule-Based)
+
+When choosing between:
+
+* Visible discard card (`C_visible`)
+* Hidden deck draw
+
+### Decision Rules:
+
+Take visible card if:
+
+* It directly completes a valid combination
+  OR
+* It replaces a high-value card (≥ 8) and reduces total score
+
+Otherwise:
+
+* Draw from hidden deck
+
+### Imperfection Layer:
+
+* 20% probability to ignore a beneficial visible card and draw from deck instead
+
+---
+
+## 5. Discard Strategy (Semi-Naive)
+
+When discarding:
+
+1. Identify cards not part of any combination
+2. Select highest-value card among them
+
+### Minor Awareness:
+
+* Avoid discarding a card that matches one of the last 1–2 recent opponent picks (if present in memory)
+
+Limitations:
+
+* Does not predict opponent needs
+* Does not evaluate future utility of cards
+
+---
+
+## 6. Opponent Awareness (Minimal)
+
+* If an opponent picks the same suit multiple times within recent memory:
+
+  * Slightly reduce probability of discarding cards of that suit
+
+Implementation:
+
+* Apply low-weight bias only (do not override discard logic)
+
+The bot must NOT:
+
+* Estimate opponent score
+* Infer complex strategies
+* Track long-term behavior
+
+---
+
+## 7. Declaration Logic (Safe but Inconsistent)
+
+Primary rule:
+
+* Declare when:
+
+  ```
+  hand_score ≤ 6–8
+  ```
+
+### Imperfection Layer:
+
+* 20% probability to declare early (hand_score ≤ 10)
+* 20% probability to delay declaration even when threshold is met
+
+The bot does not:
+
+* Estimate opponent scores
+* Calculate declaration risk
+
+---
+
+## 8. Mistake Injection System
+
+Introduce controlled randomness to simulate human error:
+
+* 10–20% probability:
+
+  * Suboptimal discard choice
+* 10–15% probability:
+
+  * Poor draw decision (ignore visible benefit)
+* Occasional:
+
+  * Retain a high-value or useless card longer than optimal
+
+Mistakes should:
+
+* Be small and plausible
+* Not completely break gameplay logic
+
+---
+
+## 10. Performance Constraints
+
+* Avoid heavy computation or combinatorial search
+* Prefer rule-based evaluation over optimization algorithms
+
+---
+
+## 11. Behavioral Summary
+
+The Easy Bot should:
+
+* Play correctly but not optimally
+* Miss obvious opportunities occasionally
+* Make inconsistent decisions
+* React to the current state without planning ahead
+* Feel like a beginner-level human player
+
+---
+
+## 12. Difficulty Characteristics
+
+* High error rate compared to advanced bots
+* Low strategic depth
+* Predictable core behavior with slight randomness
+* Designed to be beaten by most players with basic understanding
+
+------------------------------------------------------------------------------------------------------------------------------------------
+
+Okay, few changes for the easier bot: 
+
+Make them declare when hand score less than 10.
+ 
+They'll never miss an obvious better combination move which has a bigger or similar sum than any single card they hold. 
+
+They'll also never miss a swap with visible card that could create a combination.
+
+They'll remember 5 inhand cards and the last 10 cards discarded by other players and with this memory they'll decide whether to choose from hidden deck or the visible card just like the hard bot. But their probability will be less accurate the hard bots.

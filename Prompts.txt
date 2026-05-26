@@ -1,0 +1,96 @@
+I have a database schema `game` which has a table `matches` which consist of 3 column, 'MATCH_ID' (int primary, auto_increment), 'MATCH_MOVES' (varchar(110)), 'PLAYERS_COUNT' (TINYINT NOT NULL).
+
+Now create a basic node.js (Express.js) project to do a CRUD operation on this table with complete directory structure and everything. (For now, just fill random data in the db and retrieve, I'll add logic)
+
+Instructions: 
+1. Before writing any code, describe your approach and wait for approval.
+2. If any requirement I give you are ambiguous, ask clarifying questions before writing any code.
+3. After you finish writing any code, list the edge cases and suggest test cases to cover them.
+4. If a task requires changes to more than 3 files, stop and break it into smaller tasks first.
+5. When there's a bug, start by writing a test that represents it, then fix it until the test passes.
+6. Every time I correct you, reflect on what you did wrong and come up with a plan to never make the same mistake again.
+
+Read my plan about a card game:
+We distribute a set of 5 cards to both the player 1 same visible card to both the player. First player has to do 2 things which is to take a single card either the visible one or from the shuffled deck (random card) and drop multiple card or a single card. Players can drop 2 cards simultaneously only if he has 2 same number card (king, king or 7, 7) or 3 cards together if he has a sequence (circular, Queen -> King -> Ace or  Ace -> 2 -> 3) or 4 cards together if he has same number or face card or 5 cards together if its a sequence or if they all belong to the same group. And the visible card gets replaced by all the card discarded by the player who played his turn. The previously exposed cards is kept aside till the hidden shuffled deck has no cards left. After that all the previously exposed cards is shuffled and kept as hidden card to pick from. By playing turn by turn, they've to minimize the sum of cards and when a player feels that he has the lowest, he can declare. If he was had the lowest, then the opponent gets the difference of their sum as score and the declarer gets 0. But if he declared and he didn't had the lowest score, he gets 20 penalty and difference of their score. Whichever player makes the other player score to 100 first, he wins. Each player gets a time of 60 seconds. If he doesn't play, the other player gets the turn.
+
+Following is the timeline of how I'm planning to develop this.
+Core Game Logic (1v1):
+    Turn system
+	Draw/discard rules
+	Valid combinations
+	Declare logic + penalties
+	Score calculation
+Card Distribution & Deck System:	
+    Random card distribution (p1, p2)
+	Used deck (discard pile)
+	Unused deck (draw pile)
+	Shuffle logic (fair RNG)
+Game State Management:	
+    Track full game state at all times
+	Recoverable state (important later for multiplayer)
+Rule Validation Engine:	
+    Prevent illegal moves
+	Validate sequences, sets, declare conditions
+Basic In-Game UI (Cards):
+	Card display
+	Drag/drop or tap interactions
+	Clear discard/draw areas
+Turn Feedback System:
+	Highlight current player
+	Show valid actions
+	Error prompts for invalid moves
+Single Device (Hotseat Mode):
+	Hotseat mode (2 players on one device)
+Multiplayer (1v1 Online):
+	Real-time sync
+	Turn-based locking
+	Latency handling
+Backend / Database:
+	Store (User, Matches, Result)
+	Use it minimally at first
+Reconnection System:
+	Resume game after disconnect
+	Timeout rules
+Bot (AI Player):
+	Basic heuristic AI first
+	Helps: Testing, Solo Play, Filling Lobbies
+Ranking System (MMR):
+	Skill-based progression
+	Matchmaking foundation
+Leaderboard:
+	Global / weekly rankings
+	Visible progression
+Game Variants / Modes:
+	Faster mode (short rounds)
+	High-risk mode (bigger penalties)
+	Custom rules
+User Login System:
+	Guest login first (low friction)
+	Then persistent accounts
+Chat (Text first):
+	Start with text chat only
+	Voice chat later (complex + moderation heavy)
+Friends / Invite System:
+	Invite specific players
+	Private matches
+Multiplayer (Up to 8 players):
+	Rebalance rules for more players
+	Turn time optimization
+Advanced UI Polish:
+	Animations
+	Sound effects
+	Visual feedback
+Multiplayer (>8 players)
+
+So this is the planning. I'm planning to use nodejs (backend) and nextjs (frontend). So generate Core Game Logic (1v1) code using proper directory system.
+
+IN USE:
+Dealing with players that closed the browser while queueing
+Ask if the code correctly manages discarded deck and hidden deck separately and discarded deck becomes hidden only when hidden is completely exhausted
+Maybe make the username and tag case sensitive
+
+
+Todo:
+Bug fix
+UI using MUI
+Test Cases
