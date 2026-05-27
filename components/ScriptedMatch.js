@@ -1341,7 +1341,7 @@ function PageShell({ children, wide = false, particles = true }) {
                 <title>LeastScore</title>
                 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
             </Head>
-            <style>{GLOBAL_CSS}</style>
+            <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
             <div className="ls-container">
                 <div className={`ls-frame${wide ? ' ls-frame-wide' : ''}`}>
                     <div className="ls-bg-mesh" />

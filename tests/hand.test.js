@@ -19,15 +19,15 @@ describe('calculateSum', () => {
 
 describe('isValidDiscard', () => {
   const hand = [
-    { suit: 'hearts', rank: 'A' },
     { suit: 'hearts', rank: '2' },
     { suit: 'hearts', rank: '3' },
+    { suit: 'hearts', rank: '4' },
     { suit: 'diamonds', rank: 'K' },
     { suit: 'clubs', rank: 'K' }
   ];
 
   it('validates single card', () => {
-    expect(isValidDiscard(hand, [{ suit: 'hearts', rank: 'A' }])).toBe(true);
+    expect(isValidDiscard(hand, [{ suit: 'hearts', rank: '2' }])).toBe(true);
   });
 
   it('validates two same rank', () => {
@@ -39,9 +39,9 @@ describe('isValidDiscard', () => {
 
   it('validates sequence', () => {
     expect(isValidDiscard(hand, [
-      { suit: 'hearts', rank: 'A' },
       { suit: 'hearts', rank: '2' },
-      { suit: 'hearts', rank: '3' }
+      { suit: 'hearts', rank: '3' },
+      { suit: 'hearts', rank: '4' }
     ])).toBe(true);
   });
 
@@ -60,13 +60,64 @@ describe('isValidDiscard', () => {
     ])).toBe(true);
   });
 
-  it('validates circular sequence Q-K-A', () => {
-    const circularHand = [
+  it('validates high-ace sequence Q-K-A', () => {
+    const highAceHand = [
       { suit: 'hearts', rank: 'Q' },
       { suit: 'clubs', rank: 'K' },
       { suit: 'spades', rank: 'A' }
     ];
-    expect(isValidDiscard(circularHand, circularHand)).toBe(true);
+    expect(isValidDiscard(highAceHand, highAceHand)).toBe(true);
+  });
+
+  it('validates high-ace sequence 10-J-Q-K-A', () => {
+    const highAceHand = [
+      { suit: 'hearts', rank: '10' },
+      { suit: 'clubs', rank: 'J' },
+      { suit: 'spades', rank: 'Q' },
+      { suit: 'diamonds', rank: 'K' },
+      { suit: 'hearts', rank: 'A' }
+    ];
+    expect(isValidDiscard(highAceHand, highAceHand)).toBe(true);
+  });
+
+  it('rejects wrapped sequence K-A-2', () => {
+    const wrappedHand = [
+      { suit: 'hearts', rank: 'K' },
+      { suit: 'clubs', rank: 'A' },
+      { suit: 'spades', rank: '2' }
+    ];
+    expect(isValidDiscard(wrappedHand, wrappedHand)).toBe(false);
+  });
+
+  it('validates low-ace sequence A-2-3', () => {
+    const lowAceHand = [
+      { suit: 'hearts', rank: 'A' },
+      { suit: 'clubs', rank: '2' },
+      { suit: 'spades', rank: '3' }
+    ];
+    expect(isValidDiscard(lowAceHand, lowAceHand)).toBe(true);
+  });
+
+  it('validates low-ace sequence A-2-3-4-5', () => {
+    const lowAceHand = [
+      { suit: 'hearts', rank: 'A' },
+      { suit: 'clubs', rank: '2' },
+      { suit: 'spades', rank: '3' },
+      { suit: 'diamonds', rank: '4' },
+      { suit: 'clubs', rank: '5' }
+    ];
+    expect(isValidDiscard(lowAceHand, lowAceHand)).toBe(true);
+  });
+
+  it('rejects wrapped sequence K-A-2-3-4', () => {
+    const wrappedHand = [
+      { suit: 'hearts', rank: 'K' },
+      { suit: 'clubs', rank: 'A' },
+      { suit: 'spades', rank: '2' },
+      { suit: 'diamonds', rank: '3' },
+      { suit: 'clubs', rank: '4' }
+    ];
+    expect(isValidDiscard(wrappedHand, wrappedHand)).toBe(false);
   });
 
   it('rejects invalid discard', () => {

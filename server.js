@@ -16,6 +16,10 @@ const nextApp = next({ dev });
 const handle = nextApp.getRequestHandler();
 
 const port = process.env.PORT || 3000;
+const HARD_BOT_NAMES = ['ChatJPT', 'Claud', 'Geminy', 'Grokk', 'CoPylot', 'Purplexity', 'MetaXAI'];
+const EASY_BOT_NAMES = ['Nexus', 'Cortex', 'Athena', 'Neural', 'Nemesis', 'Obsidian', 'Nova'];
+let lastHardBotName = null;
+let lastEasyBotName = null;
 
 // Function to create player-specific game state view
 function getPlayerGameState(fullGameState, playerIndex) {
@@ -105,6 +109,52 @@ function shuffleArray(items) {
   return shuffled;
 }
 
+function createHardBotNamePicker() {
+  const prepareNames = () => {
+    const names = shuffleArray(HARD_BOT_NAMES);
+    if (names.length > 1 && names[0] === lastHardBotName) {
+      [names[0], names[1]] = [names[1], names[0]];
+    }
+    return names;
+  };
+
+  let names = prepareNames();
+  let index = 0;
+
+  return () => {
+    if (index >= names.length) {
+      names = prepareNames();
+      index = 0;
+    }
+    const name = names[index++];
+    lastHardBotName = name;
+    return name;
+  };
+}
+
+function createEasyBotNamePicker() {
+  const prepareNames = () => {
+    const names = shuffleArray(EASY_BOT_NAMES);
+    if (names.length > 1 && names[0] === lastEasyBotName) {
+      [names[0], names[1]] = [names[1], names[0]];
+    }
+    return names;
+  };
+
+  let names = prepareNames();
+  let index = 0;
+
+  return () => {
+    if (index >= names.length) {
+      names = prepareNames();
+      index = 0;
+    }
+    const name = names[index++];
+    lastEasyBotName = name;
+    return name;
+  };
+}
+
 nextApp.prepare().then(() => {
   const app = express();
   const server = http.createServer(app);
@@ -181,13 +231,13 @@ nextApp.prepare().then(() => {
         if (roomId && guestSocketId) {
           const room = games[roomId];
 
-            if (room && room.gameState && !room.gameState.gameOver) {
+          if (room && room.gameState && !room.gameState.gameOver) {
             // Game is still active - find guest player index and mark eliminated
-              let guestPlayerIndex = room.players.findIndex(p => p.socketId === guestSocketId);
-              if (guestPlayerIndex === -1 && guestSessionId) {
-                // socketId may already be nulled after disconnect; fall back to stable guest session id
-                guestPlayerIndex = room.players.findIndex(p => p.guestSessionId === guestSessionId);
-              }
+            let guestPlayerIndex = room.players.findIndex(p => p.socketId === guestSocketId);
+            if (guestPlayerIndex === -1 && guestSessionId) {
+              // socketId may already be nulled after disconnect; fall back to stable guest session id
+              guestPlayerIndex = room.players.findIndex(p => p.guestSessionId === guestSessionId);
+            }
             if (guestPlayerIndex !== -1) {
               markEliminated(room.gameState, guestPlayerIndex, 'guest-expire', room);
               advanceTurnAfterElimination(room.gameState, guestPlayerIndex, roomId);
@@ -386,7 +436,7 @@ nextApp.prepare().then(() => {
 
       // Randomize turn order for online matches so join order does not decide first turn.
       room.players = shuffleArray(room.players);
-      
+
       const { initializeGame } = require('./lib/game');
       room.gameState = initializeGame(room.players.length);
       room.gameState.players.forEach((p, idx) => {
@@ -395,7 +445,7 @@ nextApp.prepare().then(() => {
           p.guestSessionId = room.players[idx].guestSessionId;
         }
       });
-      
+
       matchHistory.startMatch(room, roomId).then(() => {
         room.players.forEach((player, index) => {
           if (player.socketId) {
@@ -642,13 +692,11 @@ nextApp.prepare().then(() => {
         humanPlayer.queueKey = getQueueKey(playerUsername);
       }
       const allPlayers = [humanPlayer];
-      let easySeq = 0;
-      let hardSeq = 0;
+      const pickEasyBotName = createEasyBotNamePicker();
+      const pickHardBotName = createHardBotNamePicker();
       for (let i = 0; i < totalBots; i++) {
         const difficulty = i < easyBotCount ? 'easy' : 'hard';
-        if (difficulty === 'easy') easySeq += 1;
-        else hardSeq += 1;
-        const botName = difficulty === 'easy' ? `🤖 Easy Bot ${easySeq}` : `🤖 Hard Bot ${hardSeq}`;
+        const botName = difficulty === 'easy' ? pickEasyBotName() : pickHardBotName();
         allPlayers.push({ username: botName, socketId: null, isBot: true, difficulty });
       }
 
@@ -735,12 +783,12 @@ nextApp.prepare().then(() => {
           ? room.humanPlayerIndex
           : room.players.findIndex((p) => p.socketId && !p.isBot);
         const hSock = humanIdx >= 0 ? room.players[humanIdx]?.socketId : null;
-        if (hSock) {
+        if (hSock && socketToRoom.get(hSock) === roomId) {
           io.to(hSock).emit('gameEnded', room.gameState, room.gameState.winner);
         }
       } else {
         room.players.forEach((pl, idx) => {
-          if (pl.socketId) {
+          if (pl.socketId && socketToRoom.get(pl.socketId) === roomId) {
             io.to(pl.socketId).emit('gameEnded', getPlayerGameState(room.gameState, idx), room.gameState.winner);
           }
         });
@@ -993,19 +1041,19 @@ nextApp.prepare().then(() => {
       if (!roomId || !roomId.startsWith('online_')) return;
       const room = games[roomId];
       if (!room || room.gameState) return;
-      
+
       if (!room.startVotes) room.startVotes = new Set();
-      
+
       if (voteStatus) {
         room.startVotes.add(socket.id);
       } else {
         room.startVotes.delete(socket.id);
       }
-      
+
       const startVotes = room.startVotes.size;
       const playerUsernames = room.players.map(p => p.username);
       io.to(roomId).emit('onlineLobbyUpdate', playerUsernames, startVotes);
-      
+
       const threshold = Math.floor(room.players.length / 2) + 1;
       if (room.players.length > 1 && startVotes >= threshold) {
         startOnlineLobbyMatch(roomId);
@@ -1446,15 +1494,13 @@ nextApp.prepare().then(() => {
       room.gameState = initializeGame(finalPlayerCount);
       const allParticipants = [...room.players];
       if (includeBots) {
-        let easySeq = 0;
-        let hardSeq = 0;
+        const pickEasyBotName = createEasyBotNamePicker();
+        const pickHardBotName = createHardBotNamePicker();
         for (let i = 0; i < easyBotCount; i++) {
-          easySeq += 1;
-          allParticipants.push({ username: `🤖 Easy Bot ${easySeq}`, socketId: null, isBot: true, difficulty: 'easy' });
+          allParticipants.push({ username: pickEasyBotName(), socketId: null, isBot: true, difficulty: 'easy' });
         }
         for (let i = 0; i < hardBotCount; i++) {
-          hardSeq += 1;
-          allParticipants.push({ username: `🤖 Hard Bot ${hardSeq}`, socketId: null, isBot: true, difficulty: 'hard' });
+          allParticipants.push({ username: pickHardBotName(), socketId: null, isBot: true, difficulty: 'hard' });
         }
       }
 
@@ -1919,7 +1965,7 @@ nextApp.prepare().then(() => {
           // Online lobby waiting phase
           room.players = room.players.filter(p => p.socketId !== socket.id);
           if (room.startVotes) room.startVotes.delete(socket.id);
-          
+
           if (room.players.length === 0) {
             delete games[currentRoomId];
             if (activeOnlineLobbyId === currentRoomId) activeOnlineLobbyId = null;

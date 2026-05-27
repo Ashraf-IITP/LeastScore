@@ -1,6 +1,6 @@
 // pages/index.js - Frontend for the card game (LeastScore themed UI)
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import io from 'socket.io-client';
@@ -1260,6 +1260,8 @@ const GLOBAL_CSS = `
     align-items: center;
     justify-content: center;
     gap: 6px;
+    position: relative;
+    overflow: hidden;
   }
   .ls-action-btn.make-turn {
     background: linear-gradient(135deg, #3A4DFF, #2D3DE6);
@@ -1272,10 +1274,8 @@ const GLOBAL_CSS = `
     background: linear-gradient(135deg, #FFD166, #FFC857);
     color: #1A1200;
     box-shadow: 0 4px 16px rgba(255,200,87,0.3);
-    position: relative;
-    overflow: hidden;
   }
-  .ls-action-btn.declare::before {
+  .ls-action-btn.turn-shine::before {
     content: '';
     position: absolute;
     top: 0; left: -130%;
@@ -1378,7 +1378,7 @@ function PageShell({ children, wide = false, particles = true }) {
                 <title>LeastScore</title>
                 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
             </Head>
-            <style>{GLOBAL_CSS}</style>
+            <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
             <div className="ls-container">
                 <div className={`ls-frame${wide ? ' ls-frame-wide' : ''}`}>
                     <div className="ls-bg-mesh" />
@@ -1506,6 +1506,9 @@ export default function Home() {
     const summaryTimerRef = useRef(null);
     const gameModeRef = useRef(gameMode);
     useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
+    const gameStateRef = useRef(gameState);
+    useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+    const eliminatedLeaderboardShownRef = useRef(false);
     const playAlongHintStateRef = usePlayAlongHintMemory(
         gameState,
         myPlayerIndex,
@@ -1523,6 +1526,16 @@ export default function Home() {
 
     const myPlayerIndexRef = useRef(myPlayerIndex);
     useEffect(() => { myPlayerIndexRef.current = myPlayerIndex; }, [myPlayerIndex]);
+    const usernameRef = useRef(username);
+    useEffect(() => { usernameRef.current = username; }, [username]);
+
+    const getLocalPlayerIndex = useCallback((state) => {
+        if (!state || !state.players) return -1;
+        const refIndex = myPlayerIndexRef.current;
+        if (typeof refIndex === 'number' && refIndex >= 0 && state.players[refIndex]) return refIndex;
+        const currentUsername = usernameRef.current;
+        return currentUsername ? state.players.findIndex(p => p.username === currentUsername) : -1;
+    }, []);
 
     useEffect(() => {
         const playClickSound = (e) => {
@@ -1704,6 +1717,7 @@ export default function Home() {
         newSocket.on('info', (msg) => { setFriendMessage(msg); setTimeout(() => setFriendMessage(''), 3000); });
 
         newSocket.on('gameStart', (state, playerIndex, serverRoomId) => {
+            eliminatedLeaderboardShownRef.current = false;
             setConnected(true); setGameState(state); setMyPlayerIndex(playerIndex); setBotReasoning(null); setPlayAlongHint(null);
             if (gameModeRef.current === 'pass_and_play') { setMyPlayerIndex(state.currentPlayer); setPassScreen(true); }
             if (serverRoomId) setMatchRoomId(serverRoomId);
@@ -1741,6 +1755,7 @@ export default function Home() {
         });
 
         newSocket.on('gameUpdate', (state, info) => {
+            if (gameModeRef.current === 'friends' && eliminatedLeaderboardShownRef.current) return;
             setGameState(state);
             if (gameModeRef.current === 'pass_and_play') {
                 if (!state.gameOver && state.currentPlayer !== myPlayerIndexRef.current) setTurnFinishedScreen(true);
@@ -1767,6 +1782,11 @@ export default function Home() {
         });
 
         newSocket.on('gameEnded', (state, exitingPlayerIndex) => {
+            if (gameModeRef.current === 'friends' && eliminatedLeaderboardShownRef.current) return;
+            const localIndex = getLocalPlayerIndex(state);
+            if (gameModeRef.current === 'friends' && localIndex !== -1 && state.players[localIndex]?.eliminated) {
+                eliminatedLeaderboardShownRef.current = true;
+            }
             setConnected(true); setGameState(state); setPlayerWhoExited(exitingPlayerIndex);
             setMyPlayerIndex(prev => { if (prev !== null || !username) return prev; const r = state.players.findIndex(p => p.username === username); return r !== -1 ? r : prev; });
             setSelectedCards([]); setVisibleIndex(null);
@@ -1843,6 +1863,10 @@ export default function Home() {
         newSocket.on('error', (msg) => { alert(msg); setInQueue(false); });
 
         newSocket.on('playerEliminated', (state, eliminatedPlayerIndex, info) => {
+            const localIndex = getLocalPlayerIndex(state);
+            if (gameModeRef.current === 'friends' && localIndex !== -1 && localIndex === eliminatedPlayerIndex) {
+                eliminatedLeaderboardShownRef.current = true;
+            }
             setGameState(state);
             if (info && info.reason === 'exit') setPlayerWhoExited(eliminatedPlayerIndex);
             setSelectedCards([]); setVisibleIndex(null);
@@ -1851,7 +1875,6 @@ export default function Home() {
             setPollCountdowns(prev => { if (!prev[eliminatedPlayerIndex]) return prev; const { [eliminatedPlayerIndex]: _, ...rest } = prev; return rest; });
             const eliminatedPlayer = state.players[eliminatedPlayerIndex];
             const name = eliminatedPlayer ? eliminatedPlayer.username : `Player ${eliminatedPlayerIndex + 1}`;
-            const localIndex = state.players.findIndex(p => p.username === username);
             if (localIndex !== -1 && localIndex === eliminatedPlayerIndex) alert('You have been eliminated. Redirecting to leaderboard.');
             else { const reasonText = info && info.reason === 'exit' ? 'exited and is therefore eliminated' : 'has been eliminated'; alert(`${name} ${reasonText}.`); }
         });
@@ -1903,6 +1926,7 @@ export default function Home() {
             const msg = message || 'Your opponents chose to eliminate you while you were disconnected.';
             setReconnectRejectedInfo({ message: msg }); setActiveMatchPrompt(null);
             setEliminationPolls({}); setPollCountdowns({}); setDisconnectDecisions({});
+            if (gameModeRef.current === 'friends' && finalState) eliminatedLeaderboardShownRef.current = true;
             setConnected(true); if (finalState) setGameState(finalState); if (typeof playerIndex === 'number') setMyPlayerIndex(playerIndex);
         });
 
@@ -2904,7 +2928,7 @@ export default function Home() {
     return (
         <>
             <Head><title>LeastScore — In Game</title></Head>
-            <style>{GLOBAL_CSS}</style>
+            <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
             <div className="ls-container">
                 <div className="ls-frame" style={{ color: '#F0F4FF' }}>
                     <div className="ls-bg-mesh" />
@@ -3078,14 +3102,14 @@ export default function Home() {
                     ) : (
                         <div className="ls-action-row">
                             <button
-                                className={`ls-action-btn make-turn`}
+                                className={`ls-action-btn make-turn${isMyTurn ? ' turn-shine' : ''}`}
                                 onClick={makeTurn}
                                 disabled={!isMyTurn}
                             >
                                 ▶ Make Turn
                             </button>
                             <button
-                                className={`ls-action-btn declare`}
+                                className={`ls-action-btn declare${isMyTurn ? ' turn-shine' : ''}`}
                                 onClick={() => { if (isPlayAlong) confirmPlayAlongDeclare(myPlayer.hand, declare); else declare(); }}
                                 disabled={!isMyTurn}
                             >
