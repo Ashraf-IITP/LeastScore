@@ -87,7 +87,30 @@ export default async function handler(req, res) {
       return res.redirect('/');
     }
 
-    // New social user — ask them to pick a username
+    // No provider_id match — fallback: look up by email to link existing account
+    if (profile.email) {
+      const [emailRows] = await pool.query(
+        'SELECT id, display_name, tag, token_version FROM users WHERE email = ?',
+        [profile.email]
+      );
+      if (emailRows.length) {
+        const u = emailRows[0];
+        // Backfill OAuth identity so future logins hit the fast path
+        await pool.query(
+          'UPDATE users SET auth_provider = ?, provider_id = ? WHERE id = ?',
+          [provider, profile.providerId, u.id]
+        );
+        const token = signJWT({
+          userId: u.id, tokenVersion: u.token_version,
+          username: formatUsername(u.display_name, u.tag),
+          display_name: u.display_name, tag: u.tag, type: 'registered',
+        });
+        setAuthCookie(res, token);
+        return res.redirect('/');
+      }
+    }
+
+    // Truly new social user — ask them to pick a username
     const tempToken = signTempJWT({ provider, providerId: profile.providerId, email: profile.email, suggestedName: profile.name });
     const query = new URLSearchParams({
       step: 'choose-username',

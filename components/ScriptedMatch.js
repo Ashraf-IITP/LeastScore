@@ -1126,9 +1126,9 @@ const GLOBAL_CSS = `
   .ls-playing-card {
     cursor: pointer;
     margin: 5px;
-    padding: 8px 6px;
+    padding: 8px 6px 20px;
     min-width: 54px;
-    min-height: 78px;
+    min-height: 90px;
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.12);
     background: #ffffff;
@@ -1169,9 +1169,9 @@ const GLOBAL_CSS = `
   .ls-deck-btn {
     cursor: pointer;
     margin: 5px;
-    padding: 8px 6px;
+    padding: 8px 6px 20px;
     min-width: 64px;
-    min-height: 78px;
+    min-height: 90px;
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.12);
     background: #ffffff;
@@ -1325,65 +1325,65 @@ const GLOBAL_CSS = `
 
 
 const PARTICLES = [
-    { suit: '♠', style: { top: '8%', left: '6%', animationDelay: '0s', animationDuration: '18s', fontSize: '22px', opacity: 0.12 } },
-    { suit: '♥', style: { top: '15%', right: '8%', animationDelay: '3s', animationDuration: '22s', fontSize: '16px', opacity: 0.09, color: '#FF6B6B' } },
-    { suit: '♦', style: { top: '55%', left: '4%', animationDelay: '6s', animationDuration: '20s', fontSize: '18px', opacity: 0.1, color: '#FF6B6B' } },
-    { suit: '♣', style: { top: '70%', right: '5%', animationDelay: '1.5s', animationDuration: '25s', fontSize: '20px', opacity: 0.11 } },
-    { suit: '♠', style: { top: '40%', right: '3%', animationDelay: '9s', animationDuration: '16s', fontSize: '13px', opacity: 0.08 } },
-    { suit: '♥', style: { top: '85%', left: '10%', animationDelay: '4.5s', animationDuration: '19s', fontSize: '14px', opacity: 0.07, color: '#FF6B6B' } },
+  { suit: '♠', style: { top: '8%', left: '6%', animationDelay: '0s', animationDuration: '18s', fontSize: '22px', opacity: 0.12 } },
+  { suit: '♥', style: { top: '15%', right: '8%', animationDelay: '3s', animationDuration: '22s', fontSize: '16px', opacity: 0.09, color: '#FF6B6B' } },
+  { suit: '♦', style: { top: '55%', left: '4%', animationDelay: '6s', animationDuration: '20s', fontSize: '18px', opacity: 0.1, color: '#FF6B6B' } },
+  { suit: '♣', style: { top: '70%', right: '5%', animationDelay: '1.5s', animationDuration: '25s', fontSize: '20px', opacity: 0.11 } },
+  { suit: '♠', style: { top: '40%', right: '3%', animationDelay: '9s', animationDuration: '16s', fontSize: '13px', opacity: 0.08 } },
+  { suit: '♥', style: { top: '85%', left: '10%', animationDelay: '4.5s', animationDuration: '19s', fontSize: '14px', opacity: 0.07, color: '#FF6B6B' } },
 ];
 
 
 function PageShell({ children, wide = false, particles = true }) {
-    return (
-        <>
-            <Head>
-                <title>LeastScore</title>
-                <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-            </Head>
-            <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
-            <div className="ls-container">
-                <div className={`ls-frame${wide ? ' ls-frame-wide' : ''}`}>
-                    <div className="ls-bg-mesh" />
-                    <div className="ls-noise" />
-                    {particles && PARTICLES.map((p, i) => (
-                        <div key={i} className="suit-particle" style={p.style}>{p.suit}</div>
-                    ))}
-                    <div className="ls-scroll">
-                        {children}
-                    </div>
-                </div>
-            </div>
-        </>
-    );
+  return (
+    <>
+      <Head>
+        <title>LeastScore</title>
+        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      </Head>
+      <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
+      <div className="ls-container">
+        <div className={`ls-frame${wide ? ' ls-frame-wide' : ''}`}>
+          <div className="ls-bg-mesh" />
+          <div className="ls-noise" />
+          {particles && PARTICLES.map((p, i) => (
+            <div key={i} className="suit-particle" style={p.style}>{p.suit}</div>
+          ))}
+          <div className="ls-scroll">
+            {children}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
 
 function LogoHeader({ subtitle, badge }) {
-    const [flipped, setFlipped] = useState(false);
-    useEffect(() => {
-        const t = setInterval(() => setFlipped(f => !f), 3000);
-        return () => clearInterval(t);
-    }, []);
-    return (
-        <div className="ls-logo-section">
-            <div
-                className="ls-logo-card-wrap"
-                onClick={() => setFlipped(f => !f)}
-                title="Click to flip"
-            >
-                <div className={`ls-logo-card-inner${flipped ? ' flipped' : ''}`}>
-                    <div className="ls-logo-card-face front">🃏</div>
-                    <div className="ls-logo-card-face back">🎴</div>
-                </div>
-            </div>
-            <h1 className="ls-logo-title">LeastScore</h1>
-            {badge && (
-                <div className="ls-logo-badge"><span>♠</span>{badge}</div>
-            )}
-            {subtitle && <p className="ls-logo-sub">{subtitle}</p>}
+  const [flipped, setFlipped] = useState(false);
+  useEffect(() => {
+    const t = setInterval(() => setFlipped(f => !f), 3000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="ls-logo-section">
+      <div
+        className="ls-logo-card-wrap"
+        onClick={() => setFlipped(f => !f)}
+        title="Click to flip"
+      >
+        <div className={`ls-logo-card-inner${flipped ? ' flipped' : ''}`}>
+          <div className="ls-logo-card-face front">🃏</div>
+          <div className="ls-logo-card-face back">🎴</div>
         </div>
-    );
+      </div>
+      <h1 className="ls-logo-title">LeastScore</h1>
+      {badge && (
+        <div className="ls-logo-badge"><span>♠</span>{badge}</div>
+      )}
+      {subtitle && <p className="ls-logo-sub">{subtitle}</p>}
+    </div>
+  );
 }
 
 // ── User Chip ─────────────────────────────────────────────────
@@ -1539,7 +1539,7 @@ export default function ScriptedMatch({ onExit }) {
     if (discardGlow) cls += ' selected-discard';
     if (drawnGlow) cls += ' selected-draw';
     const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
-    
+
     return (
       <button key={key} className={cls} style={{ color: isRed ? '#c11' : '#111' }}>
         <span style={{ alignSelf: 'flex-start', fontSize: '12px' }}>{card.rank}</span>
@@ -1579,14 +1579,14 @@ export default function ScriptedMatch({ onExit }) {
           <button className="btn-back" onClick={onExit} style={{ position: 'absolute', top: '24px', left: '24px' }}>
             ← Exit
           </button>
-          
+
           <div style={{ margin: '20px 0 30px' }}>
             <h2 className="ls-section-title">Tutorial Summary</h2>
             <div style={{ textAlign: 'left', fontSize: '14px', lineHeight: '1.8', color: '#A8B4C2', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'pre-wrap' }}>
               {stage.prompt}
             </div>
           </div>
-          
+
           <button className="btn-gold" onClick={onExit}>
             ✓ Back to Tutorial
           </button>

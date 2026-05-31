@@ -71,6 +71,41 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
+    const audio = new Audio('/sound/home page song.mp3');
+    audio.loop = true;
+    
+    const onInteract = () => {
+      audio.play().catch(() => {});
+      document.removeEventListener('click', onInteract);
+      document.removeEventListener('keydown', onInteract);
+      document.removeEventListener('touchstart', onInteract);
+      document.removeEventListener('scroll', onInteract);
+      document.removeEventListener('touchmove', onInteract);
+      document.removeEventListener('wheel', onInteract);
+    };
+
+    audio.play().catch(() => {
+      document.addEventListener('click', onInteract);
+      document.addEventListener('keydown', onInteract);
+      document.addEventListener('touchstart', onInteract);
+      document.addEventListener('scroll', onInteract);
+      document.addEventListener('touchmove', onInteract);
+      document.addEventListener('wheel', onInteract);
+    });
+
+    return () => {
+      document.removeEventListener('click', onInteract);
+      document.removeEventListener('keydown', onInteract);
+      document.removeEventListener('touchstart', onInteract);
+      document.removeEventListener('scroll', onInteract);
+      document.removeEventListener('touchmove', onInteract);
+      document.removeEventListener('wheel', onInteract);
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, []);
+
+  useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
       const isUpgradeFlow = router.query?.upgradeGuest === '1';
       if (d.user) {

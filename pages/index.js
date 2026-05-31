@@ -6,6 +6,7 @@ import Head from 'next/head';
 import io from 'socket.io-client';
 import ScriptedMatch from '../components/ScriptedMatch';
 import MatchHistory from '../components/MatchHistory';
+import GlobalSocialOverlays from '../components/GlobalSocialOverlays';
 import {
     usePlayAlongHintMemory,
     computePlayAlongHint,
@@ -43,6 +44,16 @@ const GLOBAL_CSS = `
 
   *, *::before, *::after { box-sizing: border-box; }
   body { margin: 0; background: #07090F; }
+
+  :root {
+    --card-w: min(22vw, 90px);
+    --card-h: calc(var(--card-w) * 1.6);
+    --card-overlap: calc(var(--card-w) * -0.62);
+    --card-font: calc(var(--card-w) * 0.25);
+    --card-padding-x: calc(var(--card-w) * 0.08);
+    --card-padding-y: calc(var(--card-w) * 0.1);
+    --card-padding-bottom: calc(var(--card-w) * 0.25);
+  }
 
   /* ── Layout ── */
   .ls-container {
@@ -623,49 +634,87 @@ const GLOBAL_CSS = `
   .ls-user-chip span { color: #8896A7; font-size: 12px; }
   .ls-user-chip strong { color: #FFC857; font-size: 13px; }
 
-  /* ── Mode cards ── */
-  .ls-mode-card {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 16px 18px;
-    border-radius: 18px;
-    background: rgba(255,255,255,0.025);
-    border: 1px solid rgba(255,255,255,0.06);
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s, transform 0.15s;
-    margin-bottom: 10px;
-    width: 100%;
-    text-align: left;
-    font-family: 'DM Sans', sans-serif;
-  }
-  .ls-mode-card:hover {
-    background: rgba(255,255,255,0.05);
-    border-color: rgba(255,255,255,0.12);
-    transform: translateX(4px);
-  }
-  .ls-mode-card:active { transform: scale(0.99); }
-  .ls-mode-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    flex-shrink: 0;
-  }
-  .ls-mode-label {
-    font-size: 15px;
-    font-weight: 600;
-    color: #F0F4FF;
-    margin: 0 0 2px;
-  }
-  .ls-mode-desc {
-    font-size: 12px;
-    color: #8896A7;
-    margin: 0;
-  }
+  /* ── Mode cards (image-backed 21:9) ── */
+   .ls-mode-card {
+     position: relative;
+     display: flex;
+     flex-direction: column;
+     justify-content: flex-end;
+     aspect-ratio: 21 / 9;
+     border-radius: 20px;
+     overflow: hidden;
+     cursor: pointer;
+     transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s, border-color 0.2s;
+     margin-bottom: 12px;
+     width: 100%;
+     text-align: left;
+     font-family: 'DM Sans', sans-serif;
+     border: 1px solid rgba(255,255,255,0.08);
+     background: #0D1117;
+     box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+   }
+   .ls-mode-card:hover {
+     transform: translateY(-4px) scale(1.01);
+     box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.1);
+     border-color: rgba(255,255,255,0.15);
+   }
+   .ls-mode-card:active { transform: scale(0.985); }
+
+   .ls-mode-card-img {
+     position: absolute;
+     inset: 0;
+     width: 100%;
+     height: 100%;
+     object-fit: cover;
+     z-index: 0;
+     transition: transform 0.4s cubic-bezier(0.4,0,0.2,1), filter 0.3s;
+     filter: brightness(0.85);
+   }
+   .ls-mode-card:hover .ls-mode-card-img {
+     transform: scale(1.05);
+     filter: brightness(0.95);
+   }
+
+   /* Gradient overlay for text readability */
+   .ls-mode-card-overlay {
+     position: absolute;
+     inset: 0;
+     z-index: 1;
+     background: linear-gradient(
+       to top,
+       rgba(7, 9, 15, 0.92) 0%,
+       rgba(7, 9, 15, 0.55) 40%,
+       rgba(7, 9, 15, 0.10) 70%,
+       transparent 100%
+     );
+     pointer-events: none;
+   }
+
+   /* Text content on top of overlay */
+   .ls-mode-card-content {
+     position: relative;
+     z-index: 2;
+     padding: 16px 20px;
+     display: flex;
+     align-items: flex-end;
+     justify-content: space-between;
+     gap: 10px;
+   }
+   .ls-mode-label {
+     font-size: 17px;
+     font-weight: 700;
+     color: #F0F4FF;
+     margin: 0 0 3px;
+     text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+     letter-spacing: 0.02em;
+   }
+   .ls-mode-desc {
+     font-size: 12.5px;
+     color: rgba(240,244,255,0.7);
+     margin: 0;
+     text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+     line-height: 1.4;
+   }
 
   /* ── Player list row ── */
   .ls-player-row {
@@ -765,30 +814,290 @@ const GLOBAL_CSS = `
   }
 
   /* ── Friends list ── */
+  .ls-friends-card {
+    padding: 22px;
+    border-radius: 24px;
+  }
+  .ls-friends-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .ls-friends-panel-copy {
+    flex: 1;
+    min-width: 0;
+  }
+  .ls-friends-panel-title {
+    margin: 0 0 4px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    color: #F0F4FF;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+  .ls-friends-panel-sub {
+    margin: 0;
+    color: #8896A7;
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+  .ls-friends-counts {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-top: 9px;
+  }
+  .ls-friends-dropdown-toggle {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 1px solid rgba(255,200,87,0.24);
+    background: rgba(255,200,87,0.08);
+    color: #FFC857;
+    font-size: 0;
+    line-height: 0;
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.18s, box-shadow 0.18s;
+  }
+  .ls-friends-dropdown-toggle:hover {
+    background: rgba(255,200,87,0.14);
+    border-color: rgba(255,200,87,0.42);
+    color: #FFD166;
+    box-shadow: 0 0 16px rgba(255,200,87,0.12);
+  }
+  .ls-friends-dropdown-toggle:active { transform: scale(0.96); }
+  .ls-friends-dropdown-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255,200,87,0.16);
+  }
+  .ls-friends-chevron {
+    width: 18px;
+    height: 18px;
+    display: block;
+    transform: rotate(0deg);
+    transition: transform 0.2s ease;
+  }
+  .ls-friends-dropdown-toggle[aria-expanded="true"] .ls-friends-chevron {
+    transform: rotate(180deg);
+  }
+  .ls-friends-notice {
+    margin-bottom: 12px;
+    padding: 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.035);
+  }
+  .ls-friends-notice.party {
+    border-color: rgba(58,77,255,0.28);
+    background: rgba(58,77,255,0.07);
+  }
+  .ls-friends-notice.friend {
+    border-color: rgba(74,222,128,0.25);
+    background: rgba(74,222,128,0.06);
+  }
+  .ls-friends-notice-kicker {
+    margin: 0 0 5px;
+    color: #8896A7;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+  }
+  .ls-friends-notice-title {
+    margin: 0;
+    color: #F0F4FF;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  .ls-friends-notice-name { color: #FFC857; }
+  .ls-friends-notice-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .ls-friends-notice-more {
+    margin: 10px 0 0;
+    color: #8896A7;
+    font-size: 12px;
+    text-align: center;
+  }
+  .ls-global-social-overlay {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10050;
+    width: min(420px, calc(100vw - 32px));
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+  }
+  .ls-global-social-overlay > * {
+    pointer-events: auto;
+  }
+  .ls-global-social-toast {
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(74,222,128,0.25);
+    background: rgba(74,222,128,0.1);
+    color: #F0F4FF;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+    animation: viewIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .ls-friend-search-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .ls-friend-search-row .ls-copy-input { min-width: 0; }
   .ls-friend-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
-    border-radius: 14px;
+    gap: 12px;
+    padding: 11px 12px;
+    border-radius: 16px;
     background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.05);
     margin-bottom: 8px;
+    transition: background 0.2s, border-color 0.2s;
   }
-  .ls-friend-info { display: flex; align-items: center; gap: 10px; }
+  .ls-friend-row:hover {
+    background: rgba(255,255,255,0.045);
+    border-color: rgba(255,255,255,0.09);
+  }
+  .ls-friend-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
   .ls-friend-avatar {
     width: 34px; height: 34px;
-    border-radius: 10px;
-    background: rgba(58,77,255,0.15);
-    border: 1px solid rgba(58,77,255,0.2);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(58,77,255,0.28), rgba(255,200,87,0.12));
+    border: 1px solid rgba(255,255,255,0.1);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    color: #F0F4FF;
+    font-size: 15px;
+    font-weight: 800;
+    flex-shrink: 0;
   }
-  .ls-friend-name { font-size: 13.5px; font-weight: 600; color: #F0F4FF; }
-  .ls-friend-status { font-size: 11px; color: #8896A7; }
-  .ls-friend-actions { display: flex; gap: 6px; }
+  .ls-friend-copy { min-width: 0; }
+  .ls-friend-name {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #F0F4FF;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 150px;
+  }
+  .ls-friend-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 3px 0 0;
+    font-size: 11px;
+    color: #8896A7;
+  }
+  .ls-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #64748B;
+    flex-shrink: 0;
+  }
+  .ls-status-dot.online {
+    background: #4ade80;
+    box-shadow: 0 0 9px rgba(74,222,128,0.55);
+  }
+  .ls-friend-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .ls-empty-state {
+    padding: 24px 12px;
+    border: 1px dashed rgba(255,255,255,0.1);
+    border-radius: 18px;
+    background: rgba(0,0,0,0.12);
+    text-align: center;
+  }
+  .ls-empty-state-title {
+    margin: 0 0 5px;
+    color: #F0F4FF;
+    font-size: 13.5px;
+    font-weight: 700;
+  }
+  .ls-empty-state-copy {
+    margin: 0;
+    color: #8896A7;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .ls-party-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    background: rgba(0,0,0,0.18);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .ls-party-summary-label {
+    margin: 0 0 2px;
+    color: #F0F4FF;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .ls-party-summary-copy {
+    margin: 0;
+    color: #8896A7;
+    font-size: 12px;
+  }
+  .ls-party-list {
+    display: grid;
+    gap: 8px;
+  }
+  .ls-friends-locked {
+    text-align: center;
+    padding: 22px 0 18px;
+  }
+  .ls-friends-locked-mark {
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 14px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,200,87,0.08);
+    border: 1px solid rgba(255,200,87,0.18);
+    color: #FFC857;
+    font-size: 22px;
+    font-weight: 800;
+  }
 
   /* ── Section header ── */
   .ls-section-header {
@@ -808,16 +1117,18 @@ const GLOBAL_CSS = `
   /* ── Tabs ── */
   .ls-tabs {
     display: flex;
-    background: rgba(0,0,0,0.3);
-    border-radius: 12px;
+    background: rgba(0,0,0,0.28);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 14px;
     padding: 4px;
     margin-bottom: 16px;
     gap: 4px;
   }
   .ls-tab {
     flex: 1;
-    padding: 8px;
-    border-radius: 9px;
+    min-width: 0;
+    padding: 9px 8px;
+    border-radius: 11px;
     border: none;
     font-family: 'DM Sans', sans-serif;
     font-size: 13px;
@@ -828,8 +1139,9 @@ const GLOBAL_CSS = `
     background: transparent;
   }
   .ls-tab.active {
-    background: rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.085);
     color: #F0F4FF;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset;
   }
 
   /* ── Checkbox ── */
@@ -1038,7 +1350,7 @@ const GLOBAL_CSS = `
   .ls-scoreboard-wrap::-webkit-scrollbar { display: none; }
   .ls-scoreboard-inner {
     display: flex;
-    gap: 10px;
+    gap: 4px;
     min-width: max-content;
     padding-bottom: 8px;
   }
@@ -1143,6 +1455,21 @@ const GLOBAL_CSS = `
     backdrop-filter: blur(8px);
     transition: border-color 0.3s, background 0.3s;
   }
+  .ls-draw-zone {
+    container-type: inline-size;
+    padding: 10px 6px;
+    --card-w: calc((100cqi - 24px) / 6);
+    --card-h: calc(var(--card-w) * 1.6);
+    --card-overlap: calc(var(--card-w) * -0.62);
+    --card-font: calc(var(--card-w) * 0.25);
+    --card-padding-x: calc(var(--card-w) * 0.08);
+    --card-padding-y: calc(var(--card-w) * 0.1);
+    --card-padding-bottom: calc(var(--card-w) * 0.25);
+  }
+  .ls-draw-zone .ls-playing-card,
+  .ls-draw-zone .ls-deck-btn {
+    margin: 2px;
+  }
   .ls-zone.active {
     background: rgba(255,200,87,0.04);
     border-color: rgba(255,200,87,0.2);
@@ -1163,9 +1490,11 @@ const GLOBAL_CSS = `
   .ls-playing-card {
     cursor: pointer;
     margin: 5px;
-    padding: 8px 6px;
-    min-width: 54px;
-    min-height: 78px;
+    padding: var(--card-padding-y) var(--card-padding-x) var(--card-padding-bottom);
+    width: var(--card-w);
+    height: var(--card-h);
+    min-width: var(--card-w);
+    min-height: var(--card-h);
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.12);
     background: #ffffff;
@@ -1174,12 +1503,12 @@ const GLOBAL_CSS = `
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
-    font-size: 15px;
+    font-size: var(--card-font);
     font-weight: 700;
     font-family: 'DM Sans', sans-serif;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
   }
   .ls-playing-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
   .ls-playing-card.selected-discard {
@@ -1206,9 +1535,11 @@ const GLOBAL_CSS = `
   .ls-deck-btn {
     cursor: pointer;
     margin: 5px;
-    padding: 8px 6px;
-    min-width: 64px;
-    min-height: 78px;
+    padding: var(--card-padding-y) var(--card-padding-x) var(--card-padding-bottom);
+    width: var(--card-w);
+    height: var(--card-h);
+    min-width: var(--card-w);
+    min-height: var(--card-h);
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.12);
     background: #ffffff;
@@ -1299,8 +1630,8 @@ const GLOBAL_CSS = `
 
   /* ── Blank card (pass & play hidden) ── */
   .ls-blank-card {
-    width: 54px;
-    height: 78px;
+    width: var(--card-w);
+    height: var(--card-h);
     margin: 5px;
     background: linear-gradient(135deg, #1A2040, #0D1117);
     border: 1px solid rgba(58,77,255,0.3);
@@ -1352,6 +1683,97 @@ const GLOBAL_CSS = `
     0% { opacity: 0.6; }
     50% { opacity: 1; transform: scale(1.05); }
     100% { opacity: 0.6; }
+  }
+
+  /* Main menu responsive layout */
+  .ls-main-menu-grid {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .ls-main-menu-game-col,
+  .ls-menu-friends-col {
+    flex: 1 1 280px;
+    min-width: 260px;
+  }
+
+  /* ── Friends panel collapsible (mobile only) ── */
+  /* The header is always visible; only the body collapses */
+  .ls-friends-panel-header {
+    cursor: default;
+  }
+  .ls-friends-collapsible-body {
+    display: none;
+  }
+  .ls-friends-collapsible-body.expanded {
+    display: block;
+    animation: viewIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @media (min-width: 600px) {
+    .ls-friends-collapsible-body {
+      display: block;
+    }
+  }
+
+  @media (max-width: 599px) {
+    .ls-main-menu-grid {
+      flex-direction: column;
+      gap: 12px;
+    }
+    .ls-main-menu-game-col {
+      display: contents;
+      min-width: 0;
+    }
+    .ls-menu-logo-wrap {
+      order: 0;
+      width: 100%;
+    }
+    .ls-menu-friends-col {
+      order: 1;
+      flex: none;
+      min-width: 0;
+      width: 100%;
+    }
+    .ls-menu-game-card {
+      order: 2;
+      width: 100%;
+    }
+
+    .ls-friends-panel-header {
+      border-radius: 12px;
+      margin: -4px;
+      padding: 4px;
+    }
+    .ls-friends-collapsible-body {
+      display: none;
+    }
+    .ls-friends-collapsible-body.expanded {
+      display: block;
+      animation: viewIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .ls-friends-card {
+      padding: 18px;
+      border-radius: 20px;
+    }
+    .ls-friend-row {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .ls-friend-actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
+    .ls-friend-name {
+      max-width: 220px;
+    }
+    .ls-party-summary {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .ls-logo-section {
+      margin: 36px 0 24px;
+    }
   }
 
   /* Spacing utils */
@@ -1446,6 +1868,17 @@ function Stepper({ value, onChange, min = 2, max = 8, label }) {
 }
 
 // ── Main Component ────────────────────────────────────────────
+function FriendsDropdownIcon() {
+    return (
+        <svg className="ls-friends-chevron" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+            <path
+                fill="currentColor"
+                d="M128 168c-3.1 0-6.1-1.2-8.5-3.5l-64-64a12 12 0 0 1 17-17L128 139l55.5-55.5a12 12 0 0 1 17 17l-64 64A12 12 0 0 1 128 168Z"
+            />
+        </svg>
+    );
+}
+
 export default function Home() {
     const router = useRouter();
     const [socket, setSocket] = useState(null);
@@ -1492,6 +1925,8 @@ export default function Home() {
     const [partyMembers, setPartyMembers] = useState([]);
     const [partyCreator, setPartyCreator] = useState(null);
     const [incomingInvite, setIncomingInvite] = useState(null);
+    const [socialToast, setSocialToast] = useState('');
+    const socialToastTimerRef = useRef(null);
     const [playerWhoExited, setPlayerWhoExited] = useState(null);
     const [disconnectDecisions, setDisconnectDecisions] = useState({});
     const [activeMatchPrompt, setActiveMatchPrompt] = useState(null);
@@ -1509,12 +1944,72 @@ export default function Home() {
     const gameStateRef = useRef(gameState);
     useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
     const eliminatedLeaderboardShownRef = useRef(false);
+    const eliminatedSoundPlayedRef = useRef(false);
     const playAlongHintStateRef = usePlayAlongHintMemory(
         gameState,
         myPlayerIndex,
         gameMode === 'play_along'
     );
     const [friendsTab, setFriendsTab] = useState('friends');
+    // Controls whether the collapsible body (tabs + content) is open on mobile
+    const [mobileFriendsExpanded, setMobileFriendsExpanded] = useState(false);
+    const friendsSectionRef = useRef(null);
+    const pendingFriendsScrollRef = useRef(false);
+
+    const applyPartyHomeFocus = useCallback(() => {
+        setFriendsTab('party');
+        setMobileFriendsExpanded(true);
+        pendingFriendsScrollRef.current = true;
+    }, []);
+
+    useEffect(() => {
+        let audio;
+        const isPlayingGame = !!gameState || gameMode === 'tutorial_observe';
+
+        const onInteract = () => {
+            if (audio) audio.play().catch(() => { });
+            document.removeEventListener('click', onInteract);
+            document.removeEventListener('keydown', onInteract);
+            document.removeEventListener('touchstart', onInteract);
+            document.removeEventListener('scroll', onInteract);
+            document.removeEventListener('touchmove', onInteract);
+            document.removeEventListener('wheel', onInteract);
+        };
+
+        if (!isPlayingGame) {
+            audio = new Audio('/sound/home page song.mp3');
+            audio.loop = true;
+            audio.play().catch(() => {
+                document.addEventListener('click', onInteract);
+                document.addEventListener('keydown', onInteract);
+                document.addEventListener('touchstart', onInteract);
+                document.addEventListener('scroll', onInteract);
+                document.addEventListener('touchmove', onInteract);
+                document.addEventListener('wheel', onInteract);
+            });
+        }
+        return () => {
+            document.removeEventListener('click', onInteract);
+            document.removeEventListener('keydown', onInteract);
+            document.removeEventListener('touchstart', onInteract);
+            document.removeEventListener('scroll', onInteract);
+            document.removeEventListener('touchmove', onInteract);
+            document.removeEventListener('wheel', onInteract);
+            if (audio) {
+                audio.pause();
+                audio.currentTime = 0;
+            }
+        };
+    }, [!!gameState, gameMode === 'tutorial_observe']);
+
+    useEffect(() => {
+        if (gameState && gameState.currentPlayer !== undefined) {
+            if (gameMode !== 'pass_and_play') {
+                const audio = new Audio('/sound/turn sound.mp3');
+                audio.play().catch(() => { });
+            }
+        }
+    }, [gameState?.currentPlayer, gameMode]);
 
     useEffect(() => {
         if (!router.isReady) return;
@@ -1522,7 +2017,21 @@ export default function Home() {
             setGameMode('tutorial');
             router.replace('/', undefined, { shallow: true });
         }
-    }, [router.isReady, router.query.mode]);
+        if (router.query.expandParty === '1') {
+            applyPartyHomeFocus();
+            router.replace('/', undefined, { shallow: true });
+        }
+    }, [router.isReady, router.query.mode, router.query.expandParty, applyPartyHomeFocus]);
+
+    useEffect(() => {
+        if (!pendingFriendsScrollRef.current) return;
+        if (connected || gameMode || showMatchHistory) return;
+        pendingFriendsScrollRef.current = false;
+        const timer = setTimeout(() => {
+            friendsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+        return () => clearTimeout(timer);
+    }, [connected, gameMode, showMatchHistory, partyMembers]);
 
     const myPlayerIndexRef = useRef(myPlayerIndex);
     useEffect(() => { myPlayerIndexRef.current = myPlayerIndex; }, [myPlayerIndex]);
@@ -1538,6 +2047,18 @@ export default function Home() {
     }, []);
 
     useEffect(() => {
+        if (gameState && myPlayerIndex !== null) {
+            const myPlayer = gameState.players[myPlayerIndex];
+            if (myPlayer && myPlayer.eliminated && !eliminatedSoundPlayedRef.current) {
+                eliminatedSoundPlayedRef.current = true;
+                new Audio('/sound/you were eliminated.mp3').play().catch(() => { });
+            } else if (myPlayer && !myPlayer.eliminated) {
+                eliminatedSoundPlayedRef.current = false;
+            }
+        }
+    }, [gameState, myPlayerIndex]);
+
+    useEffect(() => {
         const playClickSound = (e) => {
             const isEliminated = gameMode !== 'pass_and_play' && myPlayerIndex !== null && gameState && gameState.players[myPlayerIndex] && gameState.players[myPlayerIndex].eliminated;
             const isGamePage = gameState && !gameState.gameOver && !isEliminated;
@@ -1546,7 +2067,7 @@ export default function Home() {
             const target = e.target.closest('button, .ls-link-text, .link-text, .ls-logo-card-wrap, .logo-card-wrap, .ls-mode-card, .ls-checkbox-row, .ls-tab');
             if (target) {
                 const audio = new Audio('/sound/touch%20sound.wav');
-                audio.play().catch(() => {});
+                audio.play().catch(() => { });
             }
         };
 
@@ -1604,6 +2125,19 @@ export default function Home() {
         if (!checkingAuth && userType === 'registered') refreshFriendData();
     }, [checkingAuth, userType]);
 
+    const showSocialToast = useCallback((message) => {
+        if (!message) return;
+        setSocialToast(message);
+        if (socialToastTimerRef.current) clearTimeout(socialToastTimerRef.current);
+        socialToastTimerRef.current = setTimeout(() => setSocialToast(''), 5000);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (socialToastTimerRef.current) clearTimeout(socialToastTimerRef.current);
+        };
+    }, []);
+
     useEffect(() => {
         setLobbyTargetPlayers(prev => Math.max(prev, partyMembers.length || 1));
     }, [partyMembers]);
@@ -1630,8 +2164,10 @@ export default function Home() {
             const res = await fetch('/api/friends/request', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: friendQuery.trim() }) });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Unable to send request');
-            setFriendMessage(data.message); setFriendQuery(''); refreshFriendData();
-        } catch (error) { setFriendMessage(error.message || 'Unable to send request'); }
+            setFriendQuery('');
+            refreshFriendData();
+            showSocialToast(data.message);
+        } catch (error) { showSocialToast(error.message || 'Unable to send request'); }
     };
 
     const respondFriendRequest = async (requestId, action) => {
@@ -1639,7 +2175,13 @@ export default function Home() {
             const res = await fetch('/api/friends/respond', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId, action }) });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Unable to respond to request');
-            setFriendMessage(data.message); refreshFriendData();
+            setFriendRequests(prev => ({
+                incoming: prev.incoming.filter(request => request.requestId !== requestId),
+                outgoing: prev.outgoing,
+            }));
+            if (action === 'accept') showSocialToast(data.message);
+            else setFriendMessage(data.message);
+            refreshFriendData();
         } catch (error) { setFriendMessage(error.message || 'Unable to respond to request'); }
     };
 
@@ -1654,8 +2196,18 @@ export default function Home() {
     };
 
     const inviteFriendToParty = (friend) => { if (socket) socket.emit('sendPartyInvite', friend.username); };
-    const acceptPartyInvite = () => { if (socket && incomingInvite) { socket.emit('acceptPartyInvite', incomingInvite.creator || incomingInvite.from); setIncomingInvite(null); } };
+    const acceptPartyInvite = () => { if (socket && incomingInvite) socket.emit('acceptPartyInvite', incomingInvite.creator || incomingInvite.from); };
     const rejectPartyInvite = () => setIncomingInvite(null);
+    const incomingFriendRequest = friendRequests.incoming[0] || null;
+    const onlineFriendsCount = friends.filter(friend => friend.online).length;
+    const partyMemberCount = partyMembers.length;
+    const partySlotCount = Math.max(1, partyMemberCount);
+    const acceptFriendRequest = () => {
+        if (incomingFriendRequest) respondFriendRequest(incomingFriendRequest.requestId, 'accept');
+    };
+    const declineFriendRequest = () => {
+        if (incomingFriendRequest) respondFriendRequest(incomingFriendRequest.requestId, 'reject');
+    };
     const leaveParty = () => { if (socket) socket.emit('leaveParty'); };
     const kickPartyMember = (u) => { if (socket) socket.emit('kickPartyMember', u); };
     const removePartyMember = (fu) => {
@@ -1714,7 +2266,47 @@ export default function Home() {
         newSocket.on('friendDataChanged', () => { refreshFriendData(); });
         newSocket.on('partyInviteReceived', (invite) => setIncomingInvite(invite));
         newSocket.on('partyUpdate', ({ creator, members }) => { setPartyCreator(creator); setPartyMembers(members); if (creator) setIncomingInvite(null); });
-        newSocket.on('info', (msg) => { setFriendMessage(msg); setTimeout(() => setFriendMessage(''), 3000); });
+        newSocket.on('partyInviteRevoked', () => setIncomingInvite(null));
+        newSocket.on('partyMemberJoined', ({ username }) => {
+            showSocialToast(`${username} joined your party`);
+        });
+        newSocket.on('returnHome', ({ expandParty } = {}) => {
+            setShowMatchHistory(false);
+            setGameMode(null);
+            setGameState(null);
+            setPlayAlongHint(null);
+            setLobbyAction(null);
+            setConnected(false);
+            setInQueue(false);
+            setMyOnlineVote(false);
+            setInLobby(false);
+            setMatchRoomId('');
+            setLobbyId('');
+            setJoinViaUrl(false);
+            setMyPlayerIndex(null);
+            setSelectedCards([]);
+            setDrawFrom(null);
+            setVisibleIndex(null);
+            setLobbyCurrentPlayers(1);
+            setLobbyTargetPlayers(2);
+            setLobbyPlayers([]);
+            setIsLobbyCreator(false);
+            setLobbyReadyToStart(false);
+            setFillLobbyWithBots(false);
+            setFriendsEasyBotCount(0);
+            setFriendsHardBotCount(0);
+            setActiveMatchPrompt(null);
+            setBotReasoning(null);
+            setLobbyCreated(false);
+            setOnlineLobbyPlayers([]);
+            setOnlineLobbyVotes(0);
+            if (expandParty !== false) applyPartyHomeFocus();
+        });
+        newSocket.on('queueLeft', () => { setInQueue(false); setMyOnlineVote(false); });
+        newSocket.on('friendRequestAccepted', ({ username }) => {
+            showSocialToast(`Friend request accepted by ${username}`);
+        });
+        newSocket.on('info', (msg) => { showSocialToast(msg); });
 
         newSocket.on('gameStart', (state, playerIndex, serverRoomId) => {
             eliminatedLeaderboardShownRef.current = false;
@@ -1764,6 +2356,19 @@ export default function Home() {
             if (info !== undefined) {
                 if (info && typeof info === 'object' && info.roundSummary) {
                     setRoundSummary(info.roundSummary); setSummaryCountdown(10);
+                    const myPlayerIdx = myPlayerIndexRef.current;
+                    if (state.roundHistory && state.roundHistory.length > 0 && myPlayerIdx !== null) {
+                        const lastRound = state.roundHistory[state.roundHistory.length - 1];
+                        const myScoreChange = lastRound.scores[myPlayerIdx];
+                        const amIEliminated = state.players[myPlayerIdx]?.eliminated;
+                        if (myScoreChange !== null && !amIEliminated) {
+                            if (myScoreChange > 0) {
+                                new Audio('/sound/round lost.mp3').play().catch(() => { });
+                            } else {
+                                new Audio('/sound/round won.mp3').play().catch(() => { });
+                            }
+                        }
+                    }
                     if (summaryTimerRef.current) clearInterval(summaryTimerRef.current);
                     summaryTimerRef.current = setInterval(() => {
                         setSummaryCountdown(prev => {
@@ -1795,13 +2400,17 @@ export default function Home() {
         });
 
         newSocket.on('guestDisconnected', (state, guestPlayerIndex) => {
+            new Audio('/sound/disconnected.mp3').play().catch(() => { });
             setGameState(state); setPlayerWhoExited(guestPlayerIndex); setSelectedCards([]); setVisibleIndex(null);
             if (Object.keys(disconnectChoiceTimersRef.current).length > 0) { for (const key of Object.keys(disconnectChoiceTimersRef.current)) clearInterval(disconnectChoiceTimersRef.current[key]); disconnectChoiceTimersRef.current = {}; }
             setDisconnectDecisions({});
-            alert('Your opponent (guest player) has been disconnected for too long and their temporary account has been deleted. You are declared the winner as they were unable to reconnect. Guest accounts are temporary and expire if inactive for 60 seconds.');
+            setTimeout(() => {
+                alert('Your opponent (guest player) has been disconnected for too long and their temporary account has been deleted. You are declared the winner as they were unable to reconnect. Guest accounts are temporary and expire if inactive for 60 seconds.');
+            }, 100);
         });
 
         newSocket.on('playerDisconnected', (disconnectedPlayerIndex, isGuestDisconnect, expiresAt) => {
+            new Audio('/sound/disconnected.mp3').play().catch(() => { });
             const initialSeconds = expiresAt ? Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)) : 60;
             setPollCountdowns(prev => ({ ...prev, [disconnectedPlayerIndex]: initialSeconds }));
             setDisconnectDecisions(prev => ({ ...prev, [disconnectedPlayerIndex]: { disconnectedPlayerIndex, isGuestDisconnect: isGuestDisconnect === true } }));
@@ -1835,10 +2444,13 @@ export default function Home() {
             setPollCountdowns(prev => { const { [reconnectedIndex]: _, ...rest } = prev; return rest; });
             setDisconnectDecisions(prev => { const { [reconnectedIndex]: _, ...rest } = prev; return rest; });
             setEliminationPolls(prev => { const { [reconnectedIndex]: _, ...rest } = prev; return rest; });
-            alert(`Player ${reconnectedIndex + 1} reconnected — poll cancelled.`);
+            setTimeout(() => {
+                alert(`Player ${reconnectedIndex + 1} reconnected — poll cancelled.`);
+            }, 100);
         });
 
         newSocket.on('opponentReconnected', (reconnectedUserType, reconnectedIndex) => {
+            new Audio('/sound/disconnected.mp3').play().catch(() => { });
             if (typeof reconnectedIndex === 'number') {
                 const timers = disconnectChoiceTimersRef.current;
                 if (timers[reconnectedIndex]) { clearInterval(timers[reconnectedIndex]); delete timers[reconnectedIndex]; }
@@ -1849,13 +2461,18 @@ export default function Home() {
                 for (const key of Object.keys(disconnectChoiceTimersRef.current)) clearInterval(disconnectChoiceTimersRef.current[key]);
                 disconnectChoiceTimersRef.current = {}; setDisconnectDecisions({}); setPollCountdowns({}); setEliminationPolls({});
             }
-            alert(reconnectedUserType === 'guest' ? 'Your opponent (guest player) has reconnected.' : 'Your opponent (registered player) has reconnected.');
+            setTimeout(() => {
+                alert(reconnectedUserType === 'guest' ? 'Your opponent (guest player) has reconnected.' : 'Your opponent (registered player) has reconnected.');
+            }, 100);
         });
 
         newSocket.on('opponentReconnectedAndExited', (reconnectedUserType) => {
+            new Audio('/sound/disconnected.mp3').play().catch(() => { });
             for (const key of Object.keys(disconnectChoiceTimersRef.current)) clearInterval(disconnectChoiceTimersRef.current[key]);
             disconnectChoiceTimersRef.current = {}; setDisconnectDecisions({}); setPollCountdowns({}); setEliminationPolls({});
-            alert(reconnectedUserType === 'guest' ? 'Your opponent (guest player) reconnected, then chose to exit the game. You win this match.' : 'Your opponent (registered player) reconnected, then chose to exit the game. You win this match.');
+            setTimeout(() => {
+                alert(reconnectedUserType === 'guest' ? 'Your opponent (guest player) reconnected, then chose to exit the game. You win this match.' : 'Your opponent (registered player) reconnected, then chose to exit the game. You win this match.');
+            }, 100);
         });
 
         newSocket.on('activeMatchFound', ({ roomId: activeRoomId, opponentUsername }) => { setActiveMatchPrompt({ roomId: activeRoomId, opponentUsername: opponentUsername || 'Opponent' }); });
@@ -1875,8 +2492,13 @@ export default function Home() {
             setPollCountdowns(prev => { if (!prev[eliminatedPlayerIndex]) return prev; const { [eliminatedPlayerIndex]: _, ...rest } = prev; return rest; });
             const eliminatedPlayer = state.players[eliminatedPlayerIndex];
             const name = eliminatedPlayer ? eliminatedPlayer.username : `Player ${eliminatedPlayerIndex + 1}`;
-            if (localIndex !== -1 && localIndex === eliminatedPlayerIndex) alert('You have been eliminated. Redirecting to leaderboard.');
-            else { const reasonText = info && info.reason === 'exit' ? 'exited and is therefore eliminated' : 'has been eliminated'; alert(`${name} ${reasonText}.`); }
+            if (localIndex !== -1 && localIndex === eliminatedPlayerIndex) {
+                setTimeout(() => alert('You have been eliminated. Redirecting to leaderboard.'), 50);
+            } else {
+                new Audio('/sound/someone else eliminated.mp3').play().catch(() => { });
+                const reasonText = info && info.reason === 'exit' ? 'exited and is therefore eliminated' : 'has been eliminated';
+                setTimeout(() => alert(`${name} ${reasonText}.`), 50);
+            }
         });
 
         newSocket.on('roomFull', () => alert('Room is full'));
@@ -1907,7 +2529,12 @@ export default function Home() {
             setLobbyPlayers(usernames || []); setLobbyReadyToStart(true);
         });
 
-        newSocket.on('playerLeftMultiplayer', (playerIndex) => alert(`Player ${playerIndex + 1} disconnected from the multiplayer game.`));
+        newSocket.on('playerLeftMultiplayer', (playerIndex) => {
+            new Audio('/sound/disconnected.mp3').play().catch(() => { });
+            setTimeout(() => {
+                alert(`Player ${playerIndex + 1} disconnected from the multiplayer game.`);
+            }, 100);
+        });
 
         newSocket.on('lobbyCancelled', () => {
             alert('The lobby was cancelled by the creator.');
@@ -1935,7 +2562,7 @@ export default function Home() {
             if (summaryTimerRef.current) clearInterval(summaryTimerRef.current);
             newSocket.close();
         };
-    }, [checkingAuth, authToken]);
+    }, [checkingAuth, authToken, showSocialToast, applyPartyHomeFocus]);
 
     // ── Action handlers ───────────────────────────────────────
     const joinRoom = () => { if (socket && matchRoomId && username) socket.emit('joinRoom', matchRoomId, username); };
@@ -2041,10 +2668,13 @@ export default function Home() {
     };
 
     const exitGame = () => {
+        new Audio('/sound/touch sound.wav').play().catch(() => { });
         const isLocalGame = gameMode === 'pass_and_play' || gameMode === 'ai' || gameMode === 'play_along';
         const msg = isLocalGame ? 'Do you want to end this game?' : 'Are you sure you want to exit? This will count as a declaration and your opponent will win.';
-        const confirmed = window.confirm(msg);
-        if (confirmed && socket && gameState && myPlayerIndex !== null) socket.emit('exitGame', matchRoomId, { playerId: myPlayerIndex });
+        setTimeout(() => {
+            const confirmed = window.confirm(msg);
+            if (confirmed && socket && gameState && myPlayerIndex !== null) socket.emit('exitGame', matchRoomId, { playerId: myPlayerIndex });
+        }, 50);
     };
 
     const continueLastMatch = () => { if (!socket || !activeMatchPrompt?.roomId) return; socket.emit('resumeLastMatch', activeMatchPrompt.roomId); };
@@ -2103,7 +2733,7 @@ export default function Home() {
     const isSelectedCard = (card) => selectedCards.some(c => c.suit === card.suit && c.rank === card.rank);
 
     // ── Card renderer ─────────────────────────────────────────
-    const renderCard = (key, card, onClick, selected = false, highlight = false, hintGlow = null) => {
+    const renderCard = (key, card, onClick, selected = false, highlight = false, hintGlow = null, customStyle = {}) => {
         const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
         const isPlayAlong = gameMode === 'play_along' || (gameState && gameState.isPlayAlong);
         const usePlayAlongGlow = isPlayAlong && playAlongHint && hintGlow;
@@ -2111,10 +2741,16 @@ export default function Home() {
         if (usePlayAlongGlow) {
             const paStyle = playAlongCardStyle(card, { discardGlow: hintGlow.discardGlow, drawnGlow: hintGlow.drawnGlow, selected, highlight });
             return (
-                <button key={key} onClick={onClick} style={paStyle}>
-                    <span style={{ alignSelf: 'flex-start', fontSize: '12px' }}>{card.rank}</span>
-                    <span style={{ fontSize: '24px', lineHeight: 1 }}>{suitSymbols[card.suit]}</span>
-                    <span style={{ alignSelf: 'flex-end', fontSize: '12px' }}>{card.rank}</span>
+                <button key={key} onClick={onClick} style={{ ...paStyle, ...customStyle }}>
+                    <div style={{ alignSelf: 'flex-start', display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 0.9 }}>
+                        <span style={{ fontSize: 'calc(var(--card-w) * 0.25)', fontWeight: 900 }}>{card.rank}</span>
+                        <span style={{ fontSize: 'calc(var(--card-w) * 0.2)' }}>{suitSymbols[card.suit]}</span>
+                    </div>
+                    <span style={{ fontSize: 'calc(var(--card-w) * 0.55)', lineHeight: 1 }}>{suitSymbols[card.suit]}</span>
+                    <div style={{ alignSelf: 'flex-end', display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 0.9, transform: 'rotate(180deg)' }}>
+                        <span style={{ fontSize: 'calc(var(--card-w) * 0.25)', fontWeight: 900 }}>{card.rank}</span>
+                        <span style={{ fontSize: 'calc(var(--card-w) * 0.2)' }}>{suitSymbols[card.suit]}</span>
+                    </div>
                 </button>
             );
         }
@@ -2127,17 +2763,38 @@ export default function Home() {
         if (noInteract) cls += ' no-interact';
 
         return (
-            <button key={key} onClick={onClick || (() => { })} className={cls} style={{ color: isRed ? '#c11' : '#111' }}>
-                <span style={{ alignSelf: 'flex-start', fontSize: '12px' }}>{card.rank}</span>
-                <span style={{ fontSize: '24px', lineHeight: 1 }}>{suitSymbols[card.suit]}</span>
-                <span style={{ alignSelf: 'flex-end', fontSize: '12px' }}>{card.rank}</span>
+            <button key={key} onClick={onClick || (() => { })} className={cls} style={{ color: isRed ? '#c11' : '#111', ...customStyle }}>
+                <div style={{ alignSelf: 'flex-start', display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 0.9 }}>
+                    <span style={{ fontSize: 'calc(var(--card-w) * 0.25)', fontWeight: 900 }}>{card.rank}</span>
+                    <span style={{ fontSize: 'calc(var(--card-w) * 0.2)' }}>{suitSymbols[card.suit]}</span>
+                </div>
+                <span style={{ fontSize: 'calc(var(--card-w) * 0.55)', lineHeight: 1 }}>{suitSymbols[card.suit]}</span>
+                <div style={{ alignSelf: 'flex-end', display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 0.9, transform: 'rotate(180deg)' }}>
+                    <span style={{ fontSize: 'calc(var(--card-w) * 0.25)', fontWeight: 900 }}>{card.rank}</span>
+                    <span style={{ fontSize: 'calc(var(--card-w) * 0.2)' }}>{suitSymbols[card.suit]}</span>
+                </div>
             </button>
         );
     };
 
     // ── Loading ───────────────────────────────────────────────
+    const showGlobalSocial = userType === 'registered' && !(gameState && !gameState.gameOver);
+    const globalSocialOverlay = showGlobalSocial ? (
+        <GlobalSocialOverlays
+            incomingInvite={incomingInvite}
+            incomingFriendRequest={incomingFriendRequest}
+            pendingFriendRequestCount={friendRequests.incoming.length}
+            socialToast={socialToast}
+            onAcceptParty={acceptPartyInvite}
+            onRejectParty={rejectPartyInvite}
+            onAcceptFriend={acceptFriendRequest}
+            onDeclineFriend={declineFriendRequest}
+        />
+    ) : null;
+    const wrapScreen = (content) => (<>{content}{globalSocialOverlay}</>);
+
     if (checkingAuth) {
-        return (
+        return wrapScreen(
             <PageShell>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div className="ls-spinner" />
@@ -2148,7 +2805,7 @@ export default function Home() {
 
     // ── Active match prompt ───────────────────────────────────
     if (!connected && activeMatchPrompt) {
-        return (
+        return wrapScreen(
             <PageShell>
                 <LogoHeader subtitle="You have an unfinished match" />
                 <div className="ls-card view-animate">
@@ -2172,27 +2829,29 @@ export default function Home() {
 
     // ── Match History ─────────────────────────────────────────
     if (!connected && showMatchHistory) {
-        return <MatchHistory onBack={() => setShowMatchHistory(false)} />;
+        return wrapScreen(<MatchHistory onBack={() => setShowMatchHistory(false)} />);
     }
 
     // ── Main Menu ─────────────────────────────────────────────
     if (!connected && !gameMode) {
         const gameModes = [
-            { label: 'Online Match', desc: 'Play against others worldwide', icon: '🌐', bg: 'rgba(34,197,94,0.12)', action: () => checkSoloQueue('Online Match', tryOnlineMode), guestBlocked: true },
-            { label: 'Play with Friends', desc: 'Create or join a private lobby', icon: '👥', bg: 'rgba(58,77,255,0.12)', action: handlePlayWithFriends },
-            { label: 'Pass and Play', desc: 'Local multiplayer on one device', icon: '🔄', bg: 'rgba(255,200,87,0.1)', action: () => checkSoloQueue('Pass and Play', () => setGameMode('pass_and_play')) },
-            { label: 'Play with AI', desc: 'Practice vs smart bots', icon: '🤖', bg: 'rgba(232,30,99,0.1)', action: () => checkSoloQueue('Play with AI', () => setGameMode('ai')) },
-            { label: 'Tutorial', desc: 'Learn how to play', icon: '📖', bg: 'rgba(147,51,234,0.1)', action: () => setGameMode('tutorial') },
+            { label: 'Online Match', desc: 'Play against others worldwide', img: '/images/menu/online-match.png', action: () => checkSoloQueue('Online Match', tryOnlineMode), guestBlocked: true },
+            { label: 'Play with Friends', desc: 'Create or join a private lobby', img: '/images/menu/play-with-friends.png', action: handlePlayWithFriends },
+            { label: 'Pass and Play', desc: 'Local multiplayer on one device', img: '/images/menu/pass-and-play.png', action: () => checkSoloQueue('Pass and Play', () => setGameMode('pass_and_play')) },
+            { label: 'Play with AI', desc: 'Practice vs smart bots', img: '/images/menu/play-with-ai.png', action: () => checkSoloQueue('Play with AI', () => setGameMode('ai')) },
+            { label: 'Tutorial', desc: 'Learn how to play', img: '/images/menu/tutorial.png', action: () => setGameMode('tutorial') },
         ];
 
-        return (
+        return wrapScreen(
             <PageShell wide>
                 <Head><title>LeastScore — Home</title></Head>
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                <div className="ls-main-menu-grid">
                     {/* Left: Game modes */}
-                    <div style={{ flex: '1 1 280px', minWidth: '260px' }}>
-                        <LogoHeader badge="The card game where less wins" />
-                        <div className="ls-card">
+                    <div className="ls-main-menu-game-col">
+                        <div className="ls-menu-logo-wrap">
+                            <LogoHeader badge="The card game where less wins" />
+                        </div>
+                        <div className="ls-card ls-menu-game-card">
                             <div className="ls-section-header" style={{ marginBottom: '16px' }}>
                                 <h3>Game Modes</h3>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2204,27 +2863,28 @@ export default function Home() {
                                 </div>
                             </div>
                             {gameModes.map((mode, i) => (
-                                <button key={i} className="ls-mode-card" onClick={mode.action}>
-                                    <div className="ls-mode-icon" style={{ background: mode.bg }}>
-                                        <span>{mode.icon}</span>
+                                <button key={i} className="ls-mode-card" onClick={mode.action} style={{ animationDelay: `${i * 0.07}s` }}>
+                                    <img src={mode.img} alt={mode.label} className="ls-mode-card-img" loading="lazy" />
+                                    <div className="ls-mode-card-overlay" />
+                                    <div className="ls-mode-card-content">
+                                        <div>
+                                            <p className="ls-mode-label">{mode.label}</p>
+                                            <p className="ls-mode-desc">{mode.desc}</p>
+                                        </div>
+                                        {mode.guestBlocked && userType === 'guest' && (
+                                            <span className="ls-badge" style={{ flexShrink: 0 }}>Register</span>
+                                        )}
                                     </div>
-                                    <div>
-                                        <p className="ls-mode-label">{mode.label}</p>
-                                        <p className="ls-mode-desc">{mode.desc}</p>
-                                    </div>
-                                    {mode.guestBlocked && userType === 'guest' && (
-                                        <span className="ls-badge" style={{ marginLeft: 'auto', flexShrink: 0 }}>Register</span>
-                                    )}
                                 </button>
                             ))}
                             {userType === 'registered' && (
-                                <button className="ls-mode-card" onClick={() => setShowMatchHistory(true)}>
-                                    <div className="ls-mode-icon" style={{ background: 'rgba(100,116,139,0.12)' }}>
-                                        <span>📊</span>
-                                    </div>
-                                    <div>
-                                        <p className="ls-mode-label">Match History</p>
-                                        <p className="ls-mode-desc">Review your past games</p>
+                                <button className="ls-mode-card" onClick={() => setShowMatchHistory(true)} style={{ aspectRatio: 'auto', minHeight: '64px' }}>
+                                    <div className="ls-mode-card-overlay" style={{ background: 'linear-gradient(135deg, rgba(100,116,139,0.15), rgba(13,17,23,0.95))' }} />
+                                    <div className="ls-mode-card-content">
+                                        <div>
+                                            <p className="ls-mode-label">📊 Match History</p>
+                                            <p className="ls-mode-desc">Review your past games</p>
+                                        </div>
                                     </div>
                                 </button>
                             )}
@@ -2233,28 +2893,44 @@ export default function Home() {
 
                     {/* Right: Friends & Party */}
                     {userType === 'registered' ? (
-                        <div style={{ flex: '1 1 280px', minWidth: '260px' }}>
-                            <div style={{ height: '1px', marginBottom: '0' }} />
-                            <div style={{ marginTop: '0', paddingTop: '0' }}>
-                                {/* Incoming party invite */}
-                                {incomingInvite && (
-                                    <div className="ls-card" style={{ marginBottom: '16px', borderColor: 'rgba(58,77,255,0.25)', background: 'rgba(58,77,255,0.05)' }}>
-                                        <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 600, color: '#8896A7', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Party Invite</p>
-                                        <p style={{ margin: '0 0 14px', fontSize: '14px', color: '#F0F4FF', fontWeight: 600 }}>
-                                            <span style={{ color: '#FFC857' }}>{incomingInvite.from}</span> invited you to join their party!
-                                        </p>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button className="btn-green" style={{ flex: 1, padding: '10px' }} onClick={acceptPartyInvite}>Join</button>
-                                            <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={rejectPartyInvite}>Ignore</button>
+                        <div className="ls-menu-friends-col" ref={friendsSectionRef}>
+                            {friendMessage && <div className="ls-alert-success" style={{ marginBottom: '12px' }}>{friendMessage}</div>}
+
+                            <div className="ls-card ls-friends-card">
+                                {/*
+                                  The header is always visible.
+                                  On mobile (≤599px) it becomes a tap target to expand/collapse the body.
+                                  On desktop it is non-interactive (cursor: default).
+                                */}
+                                <div
+                                    className="ls-friends-panel-header"
+                                >
+                                    <div className="ls-friends-panel-copy">
+                                        <p className="ls-friends-panel-title">Friends & Party</p>
+                                        <p className="ls-friends-panel-sub">Invite online friends and create a Party</p>
+
+                                        <div className="ls-friends-counts">
+                                            <span className="ls-badge green">{onlineFriendsCount} Online</span>
+                                            <span className="ls-badge">{partyMemberCount} Party</span>
                                         </div>
+                                        {/* Chevron — only visible on mobile via CSS */}
                                     </div>
-                                )}
+                                    <button
+                                        type="button"
+                                        className="ls-friends-dropdown-toggle"
+                                        onClick={() => setMobileFriendsExpanded(open => !open)}
+                                        aria-expanded={mobileFriendsExpanded}
+                                        aria-label={mobileFriendsExpanded ? 'Collapse friends and party menu' : 'Expand friends and party menu'}
+                                    >
+                                        {mobileFriendsExpanded ? '▲' : '▼'}
+                                        <FriendsDropdownIcon />
+                                    </button>
+                                </div>
 
-                                {friendMessage && <div className="ls-alert-success">{friendMessage}</div>}
-
-                                <div className="ls-card">
+                                {/* Collapsible body: tabs + content */}
+                                <div className={`ls-friends-collapsible-body${mobileFriendsExpanded ? ' expanded' : ''}`}>
                                     <div className="ls-tabs">
-                                        {[{ key: 'friends', label: '👥 Friends' }, { key: 'party', label: '🎮 Party' }, { key: 'requests', label: '✉️ Requests' }].map(tab => (
+                                        {[{ key: 'friends', label: 'Friends' }, { key: 'party', label: 'Party' }].map(tab => (
                                             <button key={tab.key} className={`ls-tab${friendsTab === tab.key ? ' active' : ''}`} onClick={() => setFriendsTab(tab.key)}>
                                                 {tab.label}
                                             </button>
@@ -2264,28 +2940,31 @@ export default function Home() {
                                     {/* Friends tab */}
                                     {friendsTab === 'friends' && (
                                         <div className="view-animate">
-                                            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+                                            <div className="ls-friend-search-row">
                                                 <input
                                                     className="ls-copy-input"
                                                     placeholder="username#TAG"
                                                     value={friendQuery}
                                                     onChange={e => setFriendQuery(e.target.value)}
                                                     onKeyDown={e => e.key === 'Enter' && sendFriendRequest()}
-                                                    style={{ flex: 1 }}
                                                 />
                                                 <button className="btn-icon success" onClick={sendFriendRequest}>Add</button>
                                             </div>
                                             {friends.length === 0 && (
-                                                <p style={{ color: '#8896A7', fontSize: '13px', textAlign: 'center', padding: '16px 0' }}>No friends yet. Send a request!</p>
+                                                <div className="ls-empty-state">
+                                                    <p className="ls-empty-state-title">No friends yet</p>
+                                                    <p className="ls-empty-state-copy">Send a request with a username and tag.</p>
+                                                </div>
                                             )}
                                             {friends.map(friend => (
                                                 <div key={friend.username} className="ls-friend-row">
                                                     <div className="ls-friend-info">
                                                         <div className="ls-friend-avatar">{friend.username[0].toUpperCase()}</div>
-                                                        <div>
+                                                        <div className="ls-friend-copy">
                                                             <p className="ls-friend-name">{friend.username}</p>
                                                             <p className="ls-friend-status" style={{ color: friend.online ? '#4ade80' : '#8896A7' }}>
-                                                                {friend.online ? '● Online' : '● Offline'}
+                                                                <span className={`ls-status-dot${friend.online ? ' online' : ''}`} />
+                                                                {friend.online ? 'Online' : 'Offline'}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -2305,75 +2984,76 @@ export default function Home() {
                                     {/* Party tab */}
                                     {friendsTab === 'party' && (
                                         <div className="view-animate">
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                                                <p style={{ margin: 0, fontSize: '13px', color: '#8896A7' }}>
-                                                    Lobby needs at least <strong style={{ color: '#F0F4FF' }}>{partyMembers.length}</strong> slots
-                                                </p>
+                                            <div className="ls-party-summary">
+                                                <div>
+                                                    <p className="ls-party-summary-label">Party Lobby</p>
+                                                    <p className="ls-party-summary-copy">Lobby needs at least {partySlotCount} slots.</p>
+                                                </div>
                                                 {partyCreator && partyMembers.length > 1 && (
                                                     <button className="btn-icon danger" onClick={leaveParty}>Leave</button>
                                                 )}
                                             </div>
                                             {partyMembers.length === 0 && (
-                                                <p style={{ color: '#8896A7', fontSize: '13px', textAlign: 'center', padding: '16px 0' }}>
-                                                    Invite online friends to form a party.
-                                                </p>
+                                                <div className="ls-empty-state">
+                                                    <p className="ls-empty-state-title">No party yet</p>
+                                                    <p className="ls-empty-state-copy">Invite an online friend from your friends list.</p>
+                                                </div>
                                             )}
-                                            {partyMembers.map(member => (
-                                                <div key={member.username} className="ls-player-row">
-                                                    <div className="ls-player-meta">
-                                                        {partyCreator === member.username && <span className="ls-badge">Leader</span>}
-                                                        <span className="ls-player-name">{member.username}</span>
-                                                        {member.username === username && <span style={{ color: '#8896A7', fontSize: '12px' }}>(You)</span>}
+                                            <div className="ls-party-list">
+                                                {partyMembers.map(member => (
+                                                    <div key={member.username} className="ls-player-row">
+                                                        <div className="ls-player-meta">
+                                                            {partyCreator === member.username && <span className="ls-badge">Leader</span>}
+                                                            <span className="ls-player-name">{member.username}</span>
+                                                            {member.username === username && <span style={{ color: '#8896A7', fontSize: '12px' }}>(You)</span>}
+                                                        </div>
+                                                        {partyCreator === username && member.username !== username && (
+                                                            <button className="btn-icon danger" onClick={() => kickPartyMember(member.username)}>Kick</button>
+                                                        )}
                                                     </div>
-                                                    {partyCreator === username && member.username !== username && (
-                                                        <button className="btn-icon danger" onClick={() => kickPartyMember(member.username)}>Kick</button>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Requests tab */}
-                                    {friendsTab === 'requests' && (
-                                        <div className="view-animate">
-                                            <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#8896A7', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Incoming</p>
-                                            {friendRequests.incoming.length === 0 && (
-                                                <p style={{ color: '#8896A7', fontSize: '13px', marginBottom: '16px' }}>No incoming requests.</p>
-                                            )}
-                                            {friendRequests.incoming.map(request => (
-                                                <div key={request.requestId} className="ls-player-row">
-                                                    <span className="ls-player-name">{request.username}</span>
-                                                    <div style={{ display: 'flex', gap: '6px' }}>
-                                                        <button className="btn-icon success" onClick={() => respondFriendRequest(request.requestId, 'accept')}>Accept</button>
-                                                        <button className="btn-icon danger" onClick={() => respondFriendRequest(request.requestId, 'reject')}>Reject</button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            <p style={{ margin: '16px 0 10px', fontSize: '12px', color: '#8896A7', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Outgoing</p>
-                                            {friendRequests.outgoing.length === 0 && (
-                                                <p style={{ color: '#8896A7', fontSize: '13px' }}>No outgoing requests.</p>
-                                            )}
-                                            {friendRequests.outgoing.map(request => (
-                                                <div key={request.requestId} className="ls-player-row">
-                                                    <span className="ls-player-name">{request.username}</span>
-                                                    <span className="ls-badge">Pending</span>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
                             </div>
                         </div>
                     ) : (
-                        <div style={{ flex: '1 1 280px' }}>
-                            <div className="ls-card">
-                                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                                    <div style={{ fontSize: '36px', marginBottom: '14px', filter: 'drop-shadow(0 0 12px rgba(255,200,87,0.2))' }}>🔒</div>
-                                    <p className="ls-section-title" style={{ textAlign: 'center' }}>Friends & Party</p>
-                                    <p style={{ color: '#8896A7', fontSize: '13px', marginTop: '6px', lineHeight: 1.6 }}>
-                                        Register to invite friends, build a party, and track online status.
-                                    </p>
-                                    <button className="btn-primary mt-4" onClick={() => router.push('/login')}>Register Now</button>
+                        <div className="ls-menu-friends-col">
+                            <div className="ls-card ls-friends-card">
+                                {/* Header always visible; body toggles on mobile */}
+                                <div
+                                    className="ls-friends-panel-header"
+                                >
+                                    <div className="ls-friends-panel-copy">
+                                        <p className="ls-friends-panel-title">Friends & Party</p>
+                                        <p className="ls-friends-panel-sub">Register to invite friends, build a party, and track online status.</p>
+
+                                        <div className="ls-friends-counts">
+                                            <span className="ls-badge">{onlineFriendsCount} Online</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="ls-friends-dropdown-toggle"
+                                        onClick={() => setMobileFriendsExpanded(open => !open)}
+                                        aria-expanded={mobileFriendsExpanded}
+                                        aria-label={mobileFriendsExpanded ? 'Collapse friends and party menu' : 'Expand friends and party menu'}
+                                    >
+                                        {mobileFriendsExpanded ? '▲' : '▼'}
+                                        <FriendsDropdownIcon />
+                                    </button>
+                                </div>
+
+                                <div className={`ls-friends-collapsible-body${mobileFriendsExpanded ? ' expanded' : ''}`}>
+                                    <div className="ls-friends-locked" style={{ paddingTop: '8px' }}>
+                                        <div className="ls-friends-locked-mark">!</div>
+                                        <p className="ls-section-title" style={{ textAlign: 'center' }}>Register to Unlock</p>
+                                        <p style={{ color: '#8896A7', fontSize: '13px', marginTop: '6px', lineHeight: 1.6 }}>
+                                            Create an account to add friends, form a party, and play together.
+                                        </p>
+                                        <button className="btn-primary mt-4" onClick={() => router.push('/login')}>Register Now</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2385,12 +3065,12 @@ export default function Home() {
 
     // ── Tutorial observe ──────────────────────────────────────
     if (!connected && gameMode === 'tutorial_observe') {
-        return <ScriptedMatch onExit={() => setGameMode('tutorial')} />;
+        return wrapScreen(<ScriptedMatch onExit={() => setGameMode('tutorial')} />);
     }
 
     // ── Tutorial ──────────────────────────────────────────────
     if (!connected && gameMode === 'tutorial') {
-        return (
+        return wrapScreen(
             <PageShell>
                 <LogoHeader subtitle="Learn how to play" />
                 <div className="ls-card view-animate">
@@ -2421,7 +3101,7 @@ export default function Home() {
     // ── Online Match Lobby ────────────────────────────────────
     if (!connected && gameMode === 'online') {
         const majority = Math.floor(onlineLobbyPlayers.length / 2) + 1;
-        return (
+        return wrapScreen(
             <PageShell>
                 <LogoHeader subtitle="Matchmaking" />
                 <div className="ls-card view-animate">
@@ -2480,7 +3160,7 @@ export default function Home() {
 
     // ── AI Setup ──────────────────────────────────────────────
     if (!connected && gameMode === 'ai' && !gameState) {
-        return (
+        return wrapScreen(
             <PageShell>
                 <LogoHeader subtitle="Configure your match" />
                 <div className="ls-card view-animate">
@@ -2530,7 +3210,7 @@ export default function Home() {
 
     // ── Pass and Play Setup ───────────────────────────────────
     if (!connected && gameMode === 'pass_and_play' && !gameState) {
-        return (
+        return wrapScreen(
             <PageShell>
                 <LogoHeader subtitle="Local multiplayer" />
                 <div className="ls-card view-animate">
@@ -2563,7 +3243,7 @@ export default function Home() {
 
     // ── Friends – URL invite ──────────────────────────────────
     if (!connected && gameMode === 'friends' && joinViaUrl) {
-        return (
+        return wrapScreen(
             <PageShell>
                 <LogoHeader subtitle="You've been invited!" />
                 <div className="ls-card view-animate">
@@ -2588,7 +3268,7 @@ export default function Home() {
 
     // ── Friends – Choose action ───────────────────────────────
     if (!connected && gameMode === 'friends' && !lobbyAction) {
-        return (
+        return wrapScreen(
             <PageShell>
                 <LogoHeader subtitle="Private matches" />
                 <div className="ls-card view-animate">
@@ -2610,7 +3290,7 @@ export default function Home() {
 
     // ── Friends – Create Lobby ────────────────────────────────
     if (!connected && gameMode === 'friends' && lobbyAction === 'create') {
-        return (
+        return wrapScreen(
             <PageShell>
                 <LogoHeader subtitle="Set up your game" />
                 <div className="ls-card view-animate">
@@ -2648,7 +3328,7 @@ export default function Home() {
 
     // ── Friends – Join Lobby ──────────────────────────────────
     if (!connected && gameMode === 'friends' && lobbyAction === 'join') {
-        return (
+        return wrapScreen(
             <PageShell>
                 <LogoHeader subtitle="Enter lobby code" />
                 <div className="ls-card view-animate">
@@ -2677,7 +3357,7 @@ export default function Home() {
         const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}?room=${lobbyId}`;
         const progress = Math.round((lobbyCurrentPlayers / lobbyTargetPlayers) * 100);
         const vacancies = Math.max(0, lobbyTargetPlayers - lobbyCurrentPlayers);
-        return (
+        return wrapScreen(
             <PageShell>
                 <LogoHeader subtitle="Waiting for players" />
                 <div className="ls-card view-animate">
@@ -2790,7 +3470,7 @@ export default function Home() {
 
     // ── Connecting spinner ────────────────────────────────────
     if (connected && !gameState) {
-        return (
+        return wrapScreen(
             <PageShell>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
                     <div className="ls-spinner" />
@@ -2832,7 +3512,7 @@ export default function Home() {
             return '';
         };
 
-        return (
+        return wrapScreen(
             <PageShell>
                 <Head><title>LeastScore — Game Over</title></Head>
                 <LogoHeader />
@@ -2920,13 +3600,14 @@ export default function Home() {
     }
 
     // ── In-Game UI ────────────────────────────────────────────
-    if (!gameState) return null;
+    if (!gameState) return wrapScreen(null);
 
     const isPlayAlong = gameMode === 'play_along' || gameState.isPlayAlong;
     const isAIMode = gameMode === 'ai' || gameState.isAIGame;
 
     return (
         <>
+            {globalSocialOverlay}
             <Head><title>LeastScore — In Game</title></Head>
             <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
             <div className="ls-container">
@@ -2934,355 +3615,446 @@ export default function Home() {
                     <div className="ls-bg-mesh" />
                     <div className="ls-noise" />
 
-                {/* Top bar */}
-                <div className="ls-topbar" style={{ position: 'sticky', top: 0, zIndex: 100 }}>
-                    <div className="ls-topbar-badges">
-                        <span className="ls-topbar-brand">LEASTSCORE</span>
-                        {isPlayAlong && <span className="ls-badge">Play Along</span>}
-                        {isAIMode && <span className="ls-badge blue">vs AI</span>}
-                        {gameMode === 'pass_and_play' && <span className="ls-badge">Pass & Play</span>}
+                    {/* Top bar */}
+                    <div className="ls-topbar" style={{ position: 'sticky', top: 0, zIndex: 100 }}>
+                        <div className="ls-topbar-badges">
+                            <span className="ls-topbar-brand">LEASTSCORE</span>
+                            {isPlayAlong && <span className="ls-badge">Play Along</span>}
+                            {isAIMode && <span className="ls-badge blue">vs AI</span>}
+                            {gameMode === 'pass_and_play' && <span className="ls-badge">Pass & Play</span>}
+                        </div>
+                        <button className="ls-topbar-exit" onClick={exitGame}>Exit</button>
                     </div>
-                    <button className="ls-topbar-exit" onClick={exitGame}>Exit</button>
-                </div>
 
-                {isPlayAlong && <PlayAlongDeclarationBanner />}
+                    {isPlayAlong && <PlayAlongDeclarationBanner />}
 
-                {/* Scoreboard */}
-                <div className="ls-scoreboard-wrap" style={{ position: 'relative', zIndex: 1 }}>
-                    <div className="ls-scoreboard-inner">
-                        {gameState.players.map((player, idx) => {
-                            const isCurrentTurn = gameState.currentPlayer === idx;
-                            const isMe = idx === myPlayerIndex;
-                            const isEliminated = !!player.eliminated;
-                            let cardCls = 'ls-player-card';
-                            if (isCurrentTurn) cardCls += player.isThinking ? ' active-thinking' : ' active-turn';
-                            else if (isMe) cardCls += ' is-me';
-                            if (isEliminated) cardCls += ' eliminated';
+                    {/* Scoreboard moved below action buttons */}
 
+                    {/* Game area */}
+                    <div className="ls-game-area" style={{ position: 'relative', zIndex: 1 }}>
+
+                        {/* Draw from zone */}
+                        <div className="ls-zone ls-draw-zone">
+                            <p className="ls-zone-label">
+                                <span>Draw From</span>
+                                {drawFrom === 'visible' && gameState.visibleCard.length > 1 && visibleIndex == null && (
+                                    <span style={{ fontSize: '11px', color: '#FC8181', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>Select one visible card</span>
+                                )}
+                            </p>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                                    {gameState.visibleCard.map((card, i) => renderCard(
+                                        `visible-${card.rank}${card.suit}-${i}`,
+                                        card,
+                                        () => { setDrawFrom('visible'); setVisibleIndex(i); },
+                                        drawFrom === 'visible' && visibleIndex === i ? 'draw' : false,
+                                        false,
+                                        isPlayAlong && playAlongHint && isHintVisibleDraw(i, playAlongHint) ? { drawnGlow: true } : null
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={() => { setDrawFrom('deck'); setVisibleIndex(null); }}
+                                    className={`ls-deck-btn${drawFrom === 'deck' ? ' selected-draw' : ''}${isPlayAlong && playAlongHint && isHintDeckDraw(playAlongHint) ? ' hint-glow' : ''}`}
+                                >
+                                    <span style={{ fontSize: 'calc(var(--card-w) * 0.5)', color: '#111' }}>🂠</span>
+                                    <span style={{ fontSize: 'calc(var(--card-w) * 0.25)', fontWeight: 700, color: '#111' }}>Deck</span>
+                                    <span style={{ fontSize: 'calc(var(--card-w) * 0.18)', color: '#475569', background: '#f1f5f9', borderRadius: '4px', padding: '1px 4px' }}>
+                                        {Array.isArray(gameState.deck) ? gameState.deck.length : (gameState.deckCount || 0)}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Your hand zone */}
+                        <div className={`ls-zone${isMyTurn ? ' active' : ''}`}>
+                            <p className="ls-zone-label">
+                                <span>
+                                    {passScreen ? `Pass to ${myPlayer.username}` : `Your Hand (${myPlayer.hand.length} cards)`}
+                                </span>
+                                {isPlayAlong && !passScreen && (
+                                    <span className="ls-badge">Sum: {getHandSum(myPlayer.hand)}</span>
+                                )}
+                            </p>
+                            <div style={{ display: 'flex', justifyContent: 'center', minHeight: 'calc(var(--card-h) * 1.15)', marginTop: '4px', overflow: 'visible', alignItems: 'flex-end', paddingBottom: '12px', transform: 'translateY(-8px)' }}>
+                                {passScreen
+                                    ? Array.from({ length: myPlayer.hand.length }).map((_, i) => {
+                                        const total = myPlayer.hand.length;
+                                        const mid = (total - 1) / 2;
+                                        const offset = i - mid;
+                                        const angle = offset * 5;
+                                        const yOffset = Math.abs(offset) * 4;
+                                        return (
+                                            <div key={`blank-${i}`} className="ls-blank-card" style={{
+                                                transform: `rotate(${angle}deg) translateY(${yOffset}px)`,
+                                                marginLeft: i === 0 ? '0' : 'var(--card-overlap)',
+                                                zIndex: i,
+                                                position: 'relative',
+                                                marginRight: '0',
+                                                marginTop: '0',
+                                                marginBottom: '0'
+                                            }} />
+                                        );
+                                    })
+                                    : myPlayer.hand.map((card, i) => {
+                                        const total = myPlayer.hand.length;
+                                        const mid = (total - 1) / 2;
+                                        const offset = i - mid;
+                                        const angle = offset * 5;
+                                        const yOffset = Math.abs(offset) * 4;
+                                        return (
+                                            <div key={`hand-wrap-${i}`} style={{
+                                                transform: `rotate(${angle}deg) translateY(${yOffset}px)`,
+                                                marginLeft: i === 0 ? '0' : 'var(--card-overlap)',
+                                                zIndex: i,
+                                                position: 'relative',
+                                                transition: 'transform 0.2s'
+                                            }}>
+                                                {renderCard(
+                                                    `hand-${card.rank}${card.suit}-${i}`, card,
+                                                    () => toggleCardSelection(card),
+                                                    isSelectedCard(card) ? 'discard' : false,
+                                                    !isMyTurn && myPlayer.lastDrawnCard && myPlayer.lastDrawnCard.rank === card.rank && myPlayer.lastDrawnCard.suit === card.suit,
+                                                    isPlayAlong && playAlongHint && isHintDiscardCard(card, playAlongHint) ? { discardGlow: true } : null
+                                                )}
+                                            </div>
+                                        );
+                                    })
+                                }
+                            </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        {turnFinishedScreen ? (
+                            <button className="btn-gold" onClick={() => {
+                                new Audio('/sound/turn sound.mp3').play().catch(() => { });
+                                try { const AudioContext = window.AudioContext || window.webkitAudioContext; if (AudioContext) { const ctx = new AudioContext(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = 440; osc.type = 'triangle'; gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15); osc.start(); osc.stop(ctx.currentTime + 0.15); } } catch (e) { }
+                                setTurnFinishedScreen(false); setPassScreen(true); setMyPlayerIndex(gameState.currentPlayer);
+                            }}>
+                                🔄 Pass Device
+                            </button>
+                        ) : passScreen ? (
+                            <button className="btn-primary" onClick={() => {
+                                new Audio('/sound/turn sound.mp3').play().catch(() => { });
+                                try { const AudioContext = window.AudioContext || window.webkitAudioContext; if (AudioContext) { const ctx = new AudioContext(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = 880; osc.type = 'sine'; gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1); osc.start(); osc.stop(ctx.currentTime + 0.1); } } catch (e) { }
+                                setPassScreen(false);
+                            }}>
+                                🃏 Show My Cards
+                            </button>
+                        ) : (
+                            <div className="ls-action-row">
+                                <button
+                                    className={`ls-action-btn make-turn${isMyTurn ? ' turn-shine' : ''}`}
+                                    onClick={makeTurn}
+                                    disabled={!isMyTurn}
+                                >
+                                    ▶ Make Turn
+                                </button>
+                                <button
+                                    className={`ls-action-btn declare${isMyTurn ? ' turn-shine' : ''}`}
+                                    onClick={() => { if (isPlayAlong) confirmPlayAlongDeclare(myPlayer.hand, declare); else declare(); }}
+                                    disabled={!isMyTurn}
+                                >
+                                    ♛ Declare
+                                </button>
+                                {isPlayAlong && (
+                                    <button
+                                        className="ls-action-btn hint-btn"
+                                        onClick={requestPlayAlongHint}
+                                        disabled={!isMyTurn}
+                                    >
+                                        💡 Hint
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Disconnect panels */}
+                        {Object.keys(disconnectDecisions).length > 0 && Object.values(disconnectDecisions).map(dd => {
+                            const dpi = dd.disconnectedPlayerIndex;
+                            const isGuestDisconnect = dd.isGuestDisconnect === true;
+                            const countdown = pollCountdowns[dpi];
+                            const poll = eliminationPolls[dpi];
+                            const playerName = gameState?.players[dpi]?.username || ('Player ' + (dpi + 1));
                             return (
-                                <div key={`scoreboard-${idx}`} className={cardCls} style={{ display: 'flex', flexDirection: 'column', minHeight: '190px' }}>
-                                    {isCurrentTurn && (
-                                        <div className={`ls-player-card-turn-badge ${player.isThinking ? 'thinking' : 'normal'}`}>
-                                            {player.isThinking ? '🤖 Thinking…' : 'Active Turn'}
-                                        </div>
-                                    )}
-                                    <p className="ls-player-card-name" style={{ color: isMe ? '#FFC857' : '#F0F4FF' }}>
-                                        {isMe && '👤'} {player.username}
-                                        {isEliminated && <span style={{ fontSize: '10px', color: '#FC8181', marginLeft: '2px' }}>(Out)</span>}
+                                <div key={dpi} className="ls-disconnect-panel" style={{ marginTop: '16px' }}>
+                                    <p style={{ margin: '0 0 8px', fontWeight: 700, color: '#FFC857', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span>⚠</span> {playerName} disconnected
                                     </p>
-                                    <div className="ls-player-card-footer" style={{ borderTop: 'none', margin: '4px 0 8px 0', padding: 0 }}>
-                                        <div className="ls-player-card-stat" style={{ flex: 1 }}>
-                                            <p className="ls-player-card-stat-label">Draw</p>
-                                            {player.lastDrawnCard ? (
-                                                (player.lastDrawnCard.hidden || (idx !== myPlayerIndex && player.lastDrawnFrom === 'deck')) ? (
-                                                    <span style={{ fontSize: '10px', color: '#8896A7', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', padding: '1px 5px' }}>🂠</span>
-                                                ) : (
-                                                    <span style={{ fontSize: '10px', fontWeight: 700, color: (player.lastDrawnCard.suit === 'hearts' || player.lastDrawnCard.suit === 'diamonds') ? '#FC8181' : '#F0F4FF', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', padding: '1px 5px' }}>
-                                                        {player.lastDrawnCard.rank}{suitSymbols[player.lastDrawnCard.suit]}
-                                                    </span>
-                                                )
-                                            ) : <span style={{ fontSize: '10px', color: '#4A5568' }}>—</span>}
-                                        </div>
-                                        <div className="ls-player-card-stat" style={{ flex: 2, minHeight: '34px' }}>
-                                            <p className="ls-player-card-stat-label">Discard</p>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
-                                                {player.lastDiscard && player.lastDiscard.length > 0
-                                                    ? player.lastDiscard.map((card, i) => (
-                                                        <span key={i} style={{ fontSize: '10px', fontWeight: 700, color: (card.suit === 'hearts' || card.suit === 'diamonds') ? '#FC8181' : '#F0F4FF', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', padding: '1px 5px' }}>
-                                                            {card.rank}{suitSymbols[card.suit]}
-                                                        </span>
-                                                    ))
-                                                    : <span style={{ fontSize: '10px', color: '#4A5568' }}>—</span>}
+                                    {countdown != null ? (
+                                        <>
+                                            <p style={{ margin: '0 0 4px', fontSize: '13px', color: '#8896A7' }}>
+                                                {isGuestDisconnect ? `Guest session expires in ${countdown}s` : `Poll opens in ${countdown}s`}
+                                            </p>
+                                            {!isGuestDisconnect && <p style={{ margin: 0, fontSize: '12px', color: '#8896A7' }}>All remaining players will vote to eliminate or wait.</p>}
+                                        </>
+                                    ) : poll ? (
+                                        <>
+                                            <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#8896A7' }}>
+                                                Eliminate: <strong style={{ color: '#FC8181' }}>{poll.counts.eliminate}</strong> · Wait: <strong style={{ color: '#4ade80' }}>{poll.counts.wait}</strong>
+                                            </p>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button className="btn-green" style={{ flex: 1, padding: '10px', fontSize: '13px' }} onClick={() => castEliminationVote(dpi, 'wait')} disabled={poll.myVote === 'wait'}>
+                                                    {poll.myVote === 'wait' ? '✓ Voted Wait' : 'Wait'}
+                                                </button>
+                                                <button className="btn-danger" style={{ flex: 1, padding: '10px', fontSize: '13px' }} onClick={() => castEliminationVote(dpi, 'eliminate')} disabled={poll.myVote === 'eliminate'}>
+                                                    {poll.myVote === 'eliminate' ? '✓ Voted Eliminate' : 'Eliminate'}
+                                                </button>
                                             </div>
-                                        </div>
-                                    </div>
-                                    {gameState.roundHistory && gameState.roundHistory.length > 0 && (
-                                        <div style={{ marginTop: '4px', marginBottom: '12px' }}>
-                                            <p style={{ fontSize: '10px', color: '#8896A7', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Roundwise Score</p>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
-                                                {gameState.roundHistory.map((round, rIdx) => {
-                                                    const score = round.scores[idx];
-                                                    if (score === null) return null;
-                                                    const isDeclarer = round.declarerId === idx;
-                                                    return (
-                                                        <span key={rIdx} className={`ls-score-chip ${score === 0 ? 'zero' : 'pos'}`} style={{ fontSize: '10px', padding: '2px 4px', textAlign: 'center', margin: 0, width: '100%' }}>
-                                                            {score}{isDeclarer ? (round.won ? ' ✓' : ' ✗') : ''}
-                                                        </span>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
+                                        </>
+                                    ) : (
+                                        <p style={{ margin: 0, fontSize: '13px', color: '#8896A7' }}>Waiting for poll…</p>
                                     )}
-                                    <div style={{ marginTop: 'auto', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <p style={{ fontSize: '11px', color: '#8896A7', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Score</p>
-                                        <p style={{ color: isCurrentTurn ? '#FFC857' : '#F0F4FF', margin: 0, fontWeight: 'bold', fontSize: '14px' }}>
-                                            {player.score}
-                                        </p>
-                                    </div>
                                 </div>
                             );
                         })}
-                    </div>
-                </div>
 
-                {/* Game area */}
-                <div className="ls-game-area" style={{ position: 'relative', zIndex: 1 }}>
+                        {/* Scoreboard (Table Layout) */}
+                        <div className="ls-scoreboard-wrap" style={{ position: 'relative', zIndex: 1, marginTop: '16px', padding: '20px 0 0', overflowX: 'hidden' }}>
+                            <div className="ls-scoreboard-inner" style={{ flexDirection: 'column', minWidth: '100%', paddingBottom: 0 }}>
+                                {gameState.players.map((_, i) => {
+                                    const idx = (myPlayerIndex != null && myPlayerIndex !== -1) ? (myPlayerIndex + i) % gameState.players.length : i;
+                                    const player = gameState.players[idx];
+                                    const isCurrentTurn = gameState.currentPlayer === idx;
+                                    const isMe = idx === myPlayerIndex;
+                                    const isEliminated = !!player.eliminated;
+                                    let cardCls = 'ls-player-card';
+                                    if (isCurrentTurn) cardCls += player.isThinking ? ' active-thinking' : ' active-turn';
+                                    else if (isMe) cardCls += ' is-me';
+                                    if (isEliminated) cardCls += ' eliminated';
 
-                    {/* Draw from zone */}
-                    <div className="ls-zone">
-                        <p className="ls-zone-label">
-                            <span>Draw From</span>
-                            {drawFrom === 'visible' && gameState.visibleCard.length > 1 && visibleIndex == null && (
-                                <span style={{ fontSize: '11px', color: '#FC8181', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>Select one visible card</span>
-                            )}
-                        </p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
-                            {gameState.visibleCard.map((card, i) => renderCard(
-                                `visible-${card.rank}${card.suit}-${i}`,
-                                card,
-                                () => { setDrawFrom('visible'); setVisibleIndex(i); },
-                                drawFrom === 'visible' && visibleIndex === i ? 'draw' : false,
-                                false,
-                                isPlayAlong && playAlongHint && isHintVisibleDraw(i, playAlongHint) ? { drawnGlow: true } : null
-                            ))}
-                            <button
-                                onClick={() => { setDrawFrom('deck'); setVisibleIndex(null); }}
-                                className={`ls-deck-btn${drawFrom === 'deck' ? ' selected-draw' : ''}${isPlayAlong && playAlongHint && isHintDeckDraw(playAlongHint) ? ' hint-glow' : ''}`}
-                            >
-                                <span style={{ fontSize: '24px', color: '#111' }}>🂠</span>
-                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#111' }}>Deck</span>
-                                <span style={{ fontSize: '10px', color: '#475569', background: '#f1f5f9', borderRadius: '6px', padding: '1px 6px' }}>
-                                    {Array.isArray(gameState.deck) ? gameState.deck.length : (gameState.deckCount || 0)}
-                                </span>
-                            </button>
-                        </div>
-                    </div>
+                                    return (
+                                        <div key={`scoreboard-${idx}`} className={cardCls} style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', marginBottom: 0, width: '100%', padding: '12px' }}>
 
-                    {/* Your hand zone */}
-                    <div className={`ls-zone${isMyTurn ? ' active' : ''}`}>
-                        <p className="ls-zone-label">
-                            <span>
-                                {passScreen ? `Pass to ${myPlayer.username}` : `Your Hand (${myPlayer.hand.length} cards)`}
-                            </span>
-                            {isPlayAlong && !passScreen && (
-                                <span className="ls-badge">Sum: {getHandSum(myPlayer.hand)}</span>
-                            )}
-                        </p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                            {passScreen
-                                ? Array.from({ length: myPlayer.hand.length }).map((_, i) => (
-                                    <div key={`blank-${i}`} className="ls-blank-card" />
-                                ))
-                                : myPlayer.hand.map((card, i) => renderCard(
-                                    `hand-${card.rank}${card.suit}-${i}`, card,
-                                    () => toggleCardSelection(card),
-                                    isSelectedCard(card) ? 'discard' : false,
-                                    !isMyTurn && myPlayer.lastDrawnCard && myPlayer.lastDrawnCard.rank === card.rank && myPlayer.lastDrawnCard.suit === card.suit,
-                                    isPlayAlong && playAlongHint && isHintDiscardCard(card, playAlongHint) ? { discardGlow: true } : null
-                                ))
-                            }
-                        </div>
-                    </div>
+                                            {/* Column 1: Name and Turn Badge */}
+                                            <div style={{ width: '30%', minWidth: '90px', borderRight: '1px solid rgba(255,255,255,0.07)', paddingRight: '12px', marginRight: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative' }}>
+                                                {isCurrentTurn && (
+                                                    <div className={`ls-player-card-turn-badge ${player.isThinking ? 'thinking' : 'normal'}`} style={{ top: '-18px' }}>
+                                                        {player.isThinking ? '🤖 Thinking…' : 'Active Turn'}
+                                                    </div>
+                                                )}
+                                                <p className="ls-player-card-name" style={{ color: isMe ? '#FFC857' : '#F0F4FF', margin: 0, fontSize: '13px' }}>
+                                                    {isMe && '👤 '}
+                                                    {player.username}
+                                                    {isEliminated && <span style={{ fontSize: '10px', color: '#FC8181', display: 'block', marginTop: '2px' }}>(Out)</span>}
+                                                </p>
+                                            </div>
 
-                    {/* Action buttons */}
-                    {turnFinishedScreen ? (
-                        <button className="btn-gold" onClick={() => {
-                            try { const AudioContext = window.AudioContext || window.webkitAudioContext; if (AudioContext) { const ctx = new AudioContext(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = 440; osc.type = 'triangle'; gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15); osc.start(); osc.stop(ctx.currentTime + 0.15); } } catch (e) { }
-                            setTurnFinishedScreen(false); setPassScreen(true); setMyPlayerIndex(gameState.currentPlayer);
-                        }}>
-                            🔄 Pass Device
-                        </button>
-                    ) : passScreen ? (
-                        <button className="btn-primary" onClick={() => {
-                            try { const AudioContext = window.AudioContext || window.webkitAudioContext; if (AudioContext) { const ctx = new AudioContext(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = 880; osc.type = 'sine'; gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1); osc.start(); osc.stop(ctx.currentTime + 0.1); } } catch (e) { }
-                            setPassScreen(false);
-                        }}>
-                            🃏 Show My Cards
-                        </button>
-                    ) : (
-                        <div className="ls-action-row">
-                            <button
-                                className={`ls-action-btn make-turn${isMyTurn ? ' turn-shine' : ''}`}
-                                onClick={makeTurn}
-                                disabled={!isMyTurn}
-                            >
-                                ▶ Make Turn
-                            </button>
-                            <button
-                                className={`ls-action-btn declare${isMyTurn ? ' turn-shine' : ''}`}
-                                onClick={() => { if (isPlayAlong) confirmPlayAlongDeclare(myPlayer.hand, declare); else declare(); }}
-                                disabled={!isMyTurn}
-                            >
-                                ♛ Declare
-                            </button>
-                            {isPlayAlong && (
-                                <button
-                                    className="ls-action-btn hint-btn"
-                                    onClick={requestPlayAlongHint}
-                                    disabled={!isMyTurn}
-                                >
-                                    💡 Hint
-                                </button>
-                            )}
-                        </div>
-                    )}
+                                            {/* Column 2: Stats and Scores */}
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
 
-                    {/* Disconnect panels */}
-                    {Object.keys(disconnectDecisions).length > 0 && Object.values(disconnectDecisions).map(dd => {
-                        const dpi = dd.disconnectedPlayerIndex;
-                        const isGuestDisconnect = dd.isGuestDisconnect === true;
-                        const countdown = pollCountdowns[dpi];
-                        const poll = eliminationPolls[dpi];
-                        const playerName = gameState?.players[dpi]?.username || ('Player ' + (dpi + 1));
-                        return (
-                            <div key={dpi} className="ls-disconnect-panel">
-                                <p style={{ margin: '0 0 8px', fontWeight: 700, color: '#FFC857', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span>⚠</span> {playerName} disconnected
-                                </p>
-                                {countdown != null ? (
-                                    <>
-                                        <p style={{ margin: '0 0 4px', fontSize: '13px', color: '#8896A7' }}>
-                                            {isGuestDisconnect ? `Guest session expires in ${countdown}s` : `Poll opens in ${countdown}s`}
-                                        </p>
-                                        {!isGuestDisconnect && <p style={{ margin: 0, fontSize: '12px', color: '#8896A7' }}>All remaining players will vote to eliminate or wait.</p>}
-                                    </>
-                                ) : poll ? (
-                                    <>
-                                        <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#8896A7' }}>
-                                            Eliminate: <strong style={{ color: '#FC8181' }}>{poll.counts.eliminate}</strong> · Wait: <strong style={{ color: '#4ade80' }}>{poll.counts.wait}</strong>
-                                        </p>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button className="btn-green" style={{ flex: 1, padding: '10px', fontSize: '13px' }} onClick={() => castEliminationVote(dpi, 'wait')} disabled={poll.myVote === 'wait'}>
-                                                {poll.myVote === 'wait' ? '✓ Voted Wait' : 'Wait'}
-                                            </button>
-                                            <button className="btn-danger" style={{ flex: 1, padding: '10px', fontSize: '13px' }} onClick={() => castEliminationVote(dpi, 'eliminate')} disabled={poll.myVote === 'eliminate'}>
-                                                {poll.myVote === 'eliminate' ? '✓ Voted Eliminate' : 'Eliminate'}
-                                            </button>
+                                                {/* Row 1: Draw and Discard */}
+                                                <div className="ls-player-card-footer" style={{ borderTop: 'none', margin: 0, padding: 0, display: 'flex', gap: '8px' }}>
+                                                    <div className="ls-player-card-stat" style={{ flex: 1, minWidth: 0 }}>
+                                                        <p className="ls-player-card-stat-label">Draw</p>
+                                                        {player.lastDrawnCard ? (
+                                                            (player.lastDrawnCard.hidden || (idx !== myPlayerIndex && player.lastDrawnFrom === 'deck')) ? (
+                                                                <span style={{ fontSize: '10px', color: '#8896A7', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', padding: '2px 5px', whiteSpace: 'nowrap' }}>🂠</span>
+                                                            ) : (
+                                                                <span style={{ fontSize: '10px', fontWeight: 700, color: (player.lastDrawnCard.suit === 'hearts' || player.lastDrawnCard.suit === 'diamonds') ? '#FC8181' : '#F0F4FF', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', padding: '2px 5px', whiteSpace: 'nowrap' }}>
+                                                                    {player.lastDrawnCard.rank}{suitSymbols[player.lastDrawnCard.suit]}
+                                                                </span>
+                                                            )
+                                                        ) : <span style={{ fontSize: '10px', color: '#4A5568' }}>—</span>}
+                                                    </div>
+                                                    <div className="ls-player-card-stat" style={{ flex: 2, minWidth: 0 }}>
+                                                        <p className="ls-player-card-stat-label">Discard</p>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                            {player.lastDiscard && player.lastDiscard.length > 0
+                                                                ? player.lastDiscard.map((card, i) => (
+                                                                    <span key={i} style={{ fontSize: '10px', fontWeight: 700, color: (card.suit === 'hearts' || card.suit === 'diamonds') ? '#FC8181' : '#F0F4FF', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', padding: '2px 5px', whiteSpace: 'nowrap' }}>
+                                                                        {card.rank}{suitSymbols[card.suit]}
+                                                                    </span>
+                                                                ))
+                                                                : <span style={{ fontSize: '10px', color: '#4A5568' }}>—</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Row 2: Scores */}
+                                                <div style={{ display: 'flex', borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '6px' }}>
+                                                    {/* Column 2.1: Total Score */}
+                                                    <div style={{ paddingRight: '12px', borderRight: '1px solid rgba(255,255,255,0.07)', marginRight: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                        <p style={{ fontSize: '10px', color: '#8896A7', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total</p>
+                                                        <p style={{ color: isCurrentTurn ? '#FFC857' : '#F0F4FF', margin: 0, fontWeight: 'bold', fontSize: '16px' }}>
+                                                            {player.score}
+                                                        </p>
+                                                    </div>
+                                                    {/* Column 2.2: Roundwise Score */}
+                                                    {gameState.roundHistory && gameState.roundHistory.length > 0 && (
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <p style={{ fontSize: '10px', color: '#8896A7', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Roundwise</p>
+                                                            <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none' }}>
+                                                                {gameState.roundHistory.map((round, rIdx) => {
+                                                                    const score = round.scores[idx];
+                                                                    if (score === null) return null;
+                                                                    const isDeclarer = round.declarerId === idx;
+                                                                    return (
+                                                                        <span key={rIdx} className={`ls-score-chip ${score === 0 ? 'zero' : 'pos'}`} style={{ fontSize: '10px', padding: '2px 5px', whiteSpace: 'nowrap' }}>
+                                                                            {score}{isDeclarer ? (round.won ? ' ✓' : ' ✗') : ''}
+                                                                        </span>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+
+                        {/* Play Along Hint Panel */}
+                        {isPlayAlong && playAlongHint && (
+                            <PlayAlongHintReasoningPanel reasoning={playAlongHint.reasoning} onDismiss={() => setPlayAlongHint(null)} />
+                        )}
+
+                        {/* Bot Info Section (Collapsible) */}
+                        {(isAIMode || isPlayAlong) && (
+                            <div style={{ marginTop: '16px' }}>
+                                <button
+                                    className="btn-secondary"
+                                    style={{ width: '100%', marginBottom: '12px' }}
+                                    onClick={() => setBotInfoExpanded(!botInfoExpanded)}
+                                >
+                                    {botInfoExpanded ? '▲ Hide Bot Info' : '▼ Show Bot Info'}
+                                </button>
+
+                                {botInfoExpanded && (
+                                    <>
+                                        {/* Bot hands */}
+                                        {gameState.players.map((botPlayer, actualIndex) => {
+                                            if (actualIndex === myPlayerIndex) return null;
+                                            if (!botPlayer || !botPlayer.hand || botPlayer.hand.length === 0 || botPlayer.eliminated) return null;
+                                            return (
+                                                <div key={`bot-hand-${actualIndex}`} className="ls-zone" style={{ borderColor: 'rgba(232,30,99,0.12)', background: 'rgba(232,30,99,0.04)' }}>
+                                                    <p className="ls-zone-label">
+                                                        <span>{botPlayer.username}'s Hand ({botPlayer.hand.length})</span>
+                                                        <span className="ls-badge red">Sum: {getHandSum(botPlayer.hand)}</span>
+                                                    </p>
+                                                    <div style={{ display: 'flex', justifyContent: 'center', minHeight: 'calc(var(--card-h) * 1.1)', marginTop: '4px', overflow: 'hidden', alignItems: 'center' }}>
+                                                        {botPlayer.hand.map((card, i) => {
+                                                            const total = botPlayer.hand.length;
+                                                            const mid = (total - 1) / 2;
+                                                            const offset = i - mid;
+                                                            const angle = offset * 5;
+                                                            const yOffset = Math.abs(offset) * 4;
+                                                            return (
+                                                                <div key={`bot-hand-${actualIndex}-${card.rank}${card.suit}-${i}`} style={{
+                                                                    transform: `rotate(${angle}deg) translateY(${yOffset}px)`,
+                                                                    marginLeft: i === 0 ? '0' : 'var(--card-overlap)',
+                                                                    zIndex: i,
+                                                                    position: 'relative',
+                                                                    transition: 'transform 0.2s'
+                                                                }}>
+                                                                    {renderCard(`bot-hand-card-${actualIndex}-${card.rank}${card.suit}-${i}`, card, () => { }, false, false)}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+
+                                        {/* Bot Reasoning Panel */}
+                                        {isAIMode && botReasoning && (botReasoning.observation?.length > 0 || botReasoning.decision?.length > 0) && (
+                                            <div className="ls-reasoning-panel">
+                                                <div className="ls-reasoning-obs">
+                                                    <p className="ls-reasoning-label" style={{ color: '#7B8FFF' }}>
+                                                        <span>👁</span> What {gameState.players[botReasoning.botIndex ?? 1]?.username || 'Bot'} Understood
+                                                    </p>
+                                                    {botReasoning.observation && botReasoning.observation.length > 0
+                                                        ? botReasoning.observation.map((line, i) => <p key={i} className="ls-reasoning-line">{line}</p>)
+                                                        : <p className="ls-reasoning-line">Studying your plays…</p>
+                                                    }
+                                                </div>
+                                                {botReasoning.decision?.length > 0 && (
+                                                    <div className="ls-reasoning-dec">
+                                                        <p className="ls-reasoning-label" style={{ color: '#FFC857' }}>
+                                                            <span>🧠</span> Why {gameState.players[botReasoning.botIndex ?? 1]?.username || 'Bot'} Played This
+                                                        </p>
+                                                        {botReasoning.decision.map((line, i) => (
+                                                            <p key={i} className="ls-reasoning-line" style={{ color: '#F0F4FF' }}>{line}</p>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </>
-                                ) : (
-                                    <p style={{ margin: 0, fontSize: '13px', color: '#8896A7' }}>Waiting for poll…</p>
                                 )}
                             </div>
-                        );
-                    })}
-
-                    {/* Play Along Hint Panel */}
-                    {isPlayAlong && playAlongHint && (
-                        <PlayAlongHintReasoningPanel reasoning={playAlongHint.reasoning} onDismiss={() => setPlayAlongHint(null)} />
-                    )}
-
-                    {/* Bot Info Section (Collapsible) */}
-                    {(isAIMode || isPlayAlong) && (
-                        <div style={{ marginTop: '16px' }}>
-                            <button
-                                className="btn-secondary"
-                                style={{ width: '100%', marginBottom: '12px' }}
-                                onClick={() => setBotInfoExpanded(!botInfoExpanded)}
-                            >
-                                {botInfoExpanded ? '▲ Hide Bot Info' : '▼ Show Bot Info'}
-                            </button>
-
-                            {botInfoExpanded && (
-                                <>
-                                    {/* Bot hands */}
-                                    {gameState.players.map((botPlayer, actualIndex) => {
-                                        if (actualIndex === myPlayerIndex) return null;
-                                        if (!botPlayer || !botPlayer.hand || botPlayer.hand.length === 0 || botPlayer.eliminated) return null;
-                                        return (
-                                            <div key={`bot-hand-${actualIndex}`} className="ls-zone" style={{ borderColor: 'rgba(232,30,99,0.12)', background: 'rgba(232,30,99,0.04)' }}>
-                                                <p className="ls-zone-label">
-                                                    <span>{botPlayer.username}'s Hand ({botPlayer.hand.length})</span>
-                                                    <span className="ls-badge red">Sum: {getHandSum(botPlayer.hand)}</span>
-                                                </p>
-                                                <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                                                    {botPlayer.hand.map((card, i) => renderCard(`bot-hand-${actualIndex}-${card.rank}${card.suit}-${i}`, card, () => { }, false, false))}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-
-                                    {/* Bot Reasoning Panel */}
-                                    {isAIMode && botReasoning && (botReasoning.observation?.length > 0 || botReasoning.decision?.length > 0) && (
-                                        <div className="ls-reasoning-panel">
-                                            <div className="ls-reasoning-obs">
-                                                <p className="ls-reasoning-label" style={{ color: '#7B8FFF' }}>
-                                                    <span>👁</span> What {gameState.players[botReasoning.botIndex ?? 1]?.username || 'Bot'} Understood
-                                                </p>
-                                                {botReasoning.observation && botReasoning.observation.length > 0
-                                                    ? botReasoning.observation.map((line, i) => <p key={i} className="ls-reasoning-line">{line}</p>)
-                                                    : <p className="ls-reasoning-line">Studying your plays…</p>
-                                                }
-                                            </div>
-                                            {botReasoning.decision?.length > 0 && (
-                                                <div className="ls-reasoning-dec">
-                                                    <p className="ls-reasoning-label" style={{ color: '#FFC857' }}>
-                                                        <span>🧠</span> Why {gameState.players[botReasoning.botIndex ?? 1]?.username || 'Bot'} Played This
-                                                    </p>
-                                                    {botReasoning.decision.map((line, i) => (
-                                                        <p key={i} className="ls-reasoning-line" style={{ color: '#F0F4FF' }}>{line}</p>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* Round Summary Overlay */}
-                {roundSummary && (
-                    <div className="ls-overlay">
-                        <div style={{ maxWidth: '800px', width: '100%', textAlign: 'center' }}>
-                            {/* Header card */}
-                            <div style={{ background: 'rgba(255,255,255,0.028)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '28px', padding: '28px 24px', marginBottom: '16px', backdropFilter: 'blur(24px)', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 24px 48px rgba(0,0,0,0.5)', animation: 'cardEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
-                                <p style={{ margin: '0 0 6px', fontFamily: "'Bebas Neue', sans-serif", fontSize: '32px', color: '#FFC857', letterSpacing: '2px' }}>Round Summary</p>
-                                <p style={{ color: '#8896A7', fontSize: '14px', margin: 0, lineHeight: 1.6 }}>
-                                    <strong style={{ color: '#F0F4FF' }}>{roundSummary.players[roundSummary.declarerId].username}</strong> declared and{' '}
-                                    <strong style={{ color: roundSummary.declaredWon ? '#4ade80' : '#FC8181' }}>
-                                        {roundSummary.declaredWon ? 'WON' : 'LOST'}
-                                    </strong>!
-                                </p>
-                            </div>
-
-                            {/* Player cards grid */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '14px' }}>
-                                {roundSummary.players.map((p, idx) => (
-                                    <div key={idx} style={{
-                                        background: idx === roundSummary.declarerId ? 'rgba(255,200,87,0.06)' : 'rgba(255,255,255,0.028)',
-                                        border: idx === roundSummary.declarerId ? '1px solid rgba(255,200,87,0.3)' : '1px solid rgba(255,255,255,0.07)',
-                                        borderRadius: '20px', padding: '16px 14px',
-                                        backdropFilter: 'blur(12px)',
-                                        animation: `cardEntrance 0.5s ${idx * 0.08}s cubic-bezier(0.16, 1, 0.3, 1) both`,
-                                    }}>
-                                        <p style={{ margin: '0 0 12px', fontWeight: 600, color: idx === roundSummary.declarerId ? '#FFC857' : '#F0F4FF', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            {idx === roundSummary.declarerId && <span className="ls-badge">Declarer</span>}
-                                            {idx !== roundSummary.declarerId && <span style={{ opacity: 0 }} className="ls-badge">_</span>}
-                                            {p.username}
-                                        </p>
-                                        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                            {p.hand.map((card, i) => renderCard(`sum-card-${idx}-${i}`, card, () => { }, false, false))}
-                                        </div>
-                                        <p style={{ margin: '12px 0 0', fontFamily: "'Bebas Neue', sans-serif", fontSize: '24px', color: '#FFC857', letterSpacing: '1px' }}>
-                                            {p.sum === Infinity ? <span className="ls-badge red">Eliminated</span> : p.sum}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div style={{ background: 'rgba(255,255,255,0.028)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '20px', padding: '18px 20px', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                                <p style={{ color: '#8896A7', fontSize: '14px', margin: 0 }}>
-                                    Next round in <strong style={{ color: '#F0F4FF', fontFamily: "'Bebas Neue', sans-serif", fontSize: '18px' }}>{summaryCountdown}s</strong>
-                                </p>
-                                <button className="btn-gold" style={{ maxWidth: '220px' }} onClick={skipSummary}>
-                                    Skip & Play Next Round
-                                </button>
-                            </div>
-                        </div>
+                        )}
                     </div>
-                )}
+
+                    {/* Round Summary Overlay */}
+                    {roundSummary && (
+                        <div className="ls-overlay">
+                            <div style={{ maxWidth: '800px', width: '100%', textAlign: 'center' }}>
+                                {/* Header card */}
+                                <div style={{ background: 'rgba(255,255,255,0.028)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '28px', padding: '28px 24px', marginBottom: '16px', backdropFilter: 'blur(24px)', boxShadow: '0 1px 0 rgba(255,255,255,0.04) inset, 0 24px 48px rgba(0,0,0,0.5)', animation: 'cardEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
+                                    <p style={{ margin: '0 0 6px', fontFamily: "'Bebas Neue', sans-serif", fontSize: '32px', color: '#FFC857', letterSpacing: '2px' }}>Round Summary</p>
+                                    <p style={{ color: '#8896A7', fontSize: '14px', margin: 0, lineHeight: 1.6 }}>
+                                        <strong style={{ color: '#F0F4FF' }}>{roundSummary.players[roundSummary.declarerId].username}</strong> declared and{' '}
+                                        <strong style={{ color: roundSummary.declaredWon ? '#4ade80' : '#FC8181' }}>
+                                            {roundSummary.declaredWon ? 'WON' : 'LOST'}
+                                        </strong>!
+                                    </p>
+                                </div>
+
+                                {/* Player cards grid */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                                    {roundSummary.players.map((p, idx) => (
+                                        <div key={idx} style={{
+                                            background: idx === roundSummary.declarerId ? 'rgba(255,200,87,0.06)' : 'rgba(255,255,255,0.028)',
+                                            border: idx === roundSummary.declarerId ? '1px solid rgba(255,200,87,0.3)' : '1px solid rgba(255,255,255,0.07)',
+                                            borderRadius: '20px', padding: '16px 14px',
+                                            backdropFilter: 'blur(12px)',
+                                            animation: `cardEntrance 0.5s ${idx * 0.08}s cubic-bezier(0.16, 1, 0.3, 1) both`,
+                                        }}>
+                                            <p style={{ margin: '0 0 12px', fontWeight: 600, color: idx === roundSummary.declarerId ? '#FFC857' : '#F0F4FF', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                {idx === roundSummary.declarerId && <span className="ls-badge">Declarer</span>}
+                                                {idx !== roundSummary.declarerId && <span style={{ opacity: 0 }} className="ls-badge">_</span>}
+                                                {p.username}
+                                            </p>
+                                            <div style={{ display: 'flex', justifyContent: 'center', minHeight: 'calc(var(--card-h) * 1.1)', marginTop: '4px', overflow: 'hidden', alignItems: 'center', marginBottom: '10px' }}>
+                                                {p.hand.map((card, i) => {
+                                                    const total = p.hand.length;
+                                                    const mid = (total - 1) / 2;
+                                                    const offset = i - mid;
+                                                    const angle = offset * 5;
+                                                    const yOffset = Math.abs(offset) * 4;
+                                                    return (
+                                                        <div key={`sum-card-wrap-${idx}-${i}`} style={{
+                                                            transform: `rotate(${angle}deg) translateY(${yOffset}px)`,
+                                                            marginLeft: i === 0 ? '0' : 'var(--card-overlap)',
+                                                            zIndex: i,
+                                                            position: 'relative'
+                                                        }}>
+                                                            {renderCard(`sum-card-${idx}-${i}`, card, () => { }, false, false)}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            <p style={{ margin: '12px 0 0', fontFamily: "'Bebas Neue', sans-serif", fontSize: '24px', color: '#FFC857', letterSpacing: '1px' }}>
+                                                {p.sum === Infinity ? <span className="ls-badge red">Eliminated</span> : p.sum}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div style={{ background: 'rgba(255,255,255,0.028)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '20px', padding: '18px 20px', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                                    <p style={{ color: '#8896A7', fontSize: '14px', margin: 0 }}>
+                                        Next round in <strong style={{ color: '#F0F4FF', fontFamily: "'Bebas Neue', sans-serif", fontSize: '18px' }}>{summaryCountdown}s</strong>
+                                    </p>
+                                    <button className="btn-gold" style={{ maxWidth: '220px' }} onClick={skipSummary}>
+                                        Skip & Play Next Round
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </>

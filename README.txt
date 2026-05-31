@@ -47,26 +47,12 @@ Run tests: `npm test`
 
 Test cases cover these in `tests/hand.test.js`.
 
-UPDATE 1.62:
-5 sec delay for bots move
-Number of Hidden Cards in deck
-Drawn cards also to be shown
-Don't keep the hidden card pre-selected
-Smarter Bots and bug fixes:
-Easy Bots:
-	Remember all discarded cards to accurately take his chance from hidden deck
-	Now avoids discarding smaller for no benefit
-	Now declare at a score <7
-Hard Bots:
-	Now see other opponents as individuals not as a single opponent (Multi-opponent modeling)
-	Now considers the likeliness of others to declare
-	Removed the humanization mistake mechanism of choosing from hidden deck instead of higher visible card gain
-	When opponent has less than 5 cards, it'll not try to avoid throwing favourable suits (since 5 same suit combo not possible)
-	Now remembers if you drew 2 consecutive cards in order to avoid giving away a card that can form a combo of 3
-	Now only avoids discarding favourable cards to the next in turn opponent and not all the players. But still remembers all the discarded and drawn cards to calculate hand score of others.
-	Now remembers count of inhand cards to double check opponents' score estimation.
-New User instructions added
-Observe a game added
-Play along added
-Match History Added
-Disconnection logic when all disconnects.
+UPDATE 1.72:
+Table Style Player Cards on game page
+Hard Bots present gain added (previously future gains only)
+Turn order changed every round
+K Q A only sequence allowed in circular
+Named Bots
+Cards Bigger and Overlapping Casino Style
+
+

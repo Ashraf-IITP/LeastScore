@@ -1134,9 +1134,9 @@ const GLOBAL_CSS = `
   .ls-playing-card {
     cursor: pointer;
     margin: 5px;
-    padding: 8px 6px;
+    padding: 8px 6px 20px;
     min-width: 54px;
-    min-height: 78px;
+    min-height: 90px;
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.12);
     background: #ffffff;
@@ -1177,9 +1177,9 @@ const GLOBAL_CSS = `
   .ls-deck-btn {
     cursor: pointer;
     margin: 5px;
-    padding: 8px 6px;
+    padding: 8px 6px 20px;
     min-width: 64px;
-    min-height: 78px;
+    min-height: 90px;
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.12);
     background: #ffffff;

@@ -21,7 +21,23 @@ export default async function handler(req, res) {
     const pool = getPool();
     const result = await respondFriendRequest(pool, user.userId, requestId, action);
 
-    if (global.io) {
+    if (global.io && action === 'accept') {
+      const { getSocketIds } = require('../../../lib/online');
+      const [accepterRows] = await pool.query(
+        'SELECT display_name, tag FROM users WHERE id = ?',
+        [user.userId]
+      );
+      const accepter = accepterRows[0];
+      const accepterUsername = accepter ? `${accepter.display_name}#${accepter.tag}` : user.username;
+
+      const requesterSockets = getSocketIds(result.requesterId);
+      if (requesterSockets) {
+        for (const sid of requesterSockets) {
+          global.io.to(sid).emit('friendRequestAccepted', { username: accepterUsername, role: 'requester' });
+          global.io.to(sid).emit('friendDataChanged');
+        }
+      }
+    } else if (global.io) {
       const { getSocketIds } = require('../../../lib/online');
       const sockets = getSocketIds(result.requesterId);
       if (sockets) {

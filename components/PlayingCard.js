@@ -109,9 +109,9 @@ export function PlayingCard({ card, selected = false, highlight = false, onClick
       <div
         style={{
           margin: '4px',
-          padding: '8px',
+          padding: '8px 8px 20px',
           minWidth: '48px',
-          minHeight: '68px',
+          minHeight: '80px',
           borderRadius: '10px',
           border: '1px solid rgba(255,255,255,0.1)',
           background: 'rgba(255,255,255,0.05)',
@@ -137,9 +137,9 @@ export function PlayingCard({ card, selected = false, highlight = false, onClick
       style={{
         cursor: onClick ? 'pointer' : 'default',
         margin: '4px',
-        padding: '8px',
+        padding: '8px 8px 20px',
         minWidth: '56px',
-        minHeight: '80px',
+        minHeight: '92px',
         borderRadius: '10px',
         border: selected ? '3px solid #7B8FFF' : '1px solid rgba(255,255,255,0.2)',
         background: highlight ? '#fffde7' : '#ffffff',

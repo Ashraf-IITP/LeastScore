@@ -191,6 +191,114 @@ nextApp.prepare().then(() => {
   // Map of username -> creatorUsername (to find which party a user belongs to)
   const userToPartyCreator = new Map();
 
+  async function revokePendingPartyInvitesForParty(creatorName) {
+    const party = parties.get(creatorName);
+    if (!party || party.invited.size === 0) return;
+
+    const pending = [...party.invited];
+    party.invited.clear();
+
+    try {
+      const pool = getPool();
+      for (const invitedUsername of pending) {
+        const parsed = parseUsername(invitedUsername);
+        if (!parsed) continue;
+        const [rows] = await pool.query(
+          'SELECT id FROM users WHERE display_name = ? AND tag = ?',
+          [parsed.name, parsed.tag]
+        );
+        const user = rows[0];
+        if (!user) continue;
+        const socketIds = getSocketIds(user.id);
+        if (socketIds) {
+          for (const sid of socketIds) {
+            io.to(sid).emit('partyInviteRevoked');
+          }
+        }
+      }
+    } catch (e) {
+      console.error('revokePendingPartyInvitesForParty:', e.message);
+    }
+  }
+
+  async function revokePendingPartyInvitesForMember(username) {
+    if (!username) return;
+    const creatorName = userToPartyCreator.get(username);
+    if (!creatorName) return;
+    await revokePendingPartyInvitesForParty(creatorName);
+  }
+
+  function pullSocketFromWaitingAreas(targetSocket) {
+    if (!targetSocket) return;
+    const roomId = socketToRoom.get(targetSocket.id);
+    if (!roomId || !games[roomId] || games[roomId].gameState) return;
+
+    if (roomId.startsWith('online_')) {
+      const room = games[roomId];
+      room.players = room.players.filter(p => p.socketId !== targetSocket.id);
+      if (room.startVotes) room.startVotes.delete(targetSocket.id);
+      targetSocket.leave(roomId);
+      socketToRoom.delete(targetSocket.id);
+      targetSocket.emit('queueLeft');
+
+      if (room.players.length === 0) {
+        delete games[roomId];
+        if (activeOnlineLobbyId === roomId) activeOnlineLobbyId = null;
+      } else {
+        if (room.players.length === 1 && room.startVotes) room.startVotes.clear();
+        const playerUsernames = room.players.map(p => p.username);
+        io.to(roomId).emit('onlineLobbyUpdate', playerUsernames, room.startVotes ? room.startVotes.size : 0);
+      }
+      return;
+    }
+
+    if (roomId.startsWith('lobby_')) {
+      const room = games[roomId];
+      const playerIndex = room.players.findIndex(p => p.socketId === targetSocket.id);
+      if (playerIndex === -1) return;
+
+      const isCreator = targetSocket.id === room.creatorSocketId;
+      if (isCreator) {
+        room.players.forEach(p => {
+          const s = io.sockets.sockets.get(p.socketId);
+          if (s && p.socketId !== targetSocket.id) {
+            s.leave(roomId);
+            s.emit('lobbyCancelled');
+          }
+          socketToRoom.delete(p.socketId);
+        });
+        delete games[roomId];
+      } else {
+        room.players.splice(playerIndex, 1);
+        targetSocket.leave(roomId);
+        socketToRoom.delete(targetSocket.id);
+        if (room.players.length === 0) {
+          delete games[roomId];
+        } else {
+          const playerUsernames = room.players.map(p => p.username);
+          io.to(roomId).emit('lobbyUpdate', room.players.length, room.targetPlayers || 2, playerUsernames);
+        }
+      }
+    }
+  }
+
+  function isSocketInActiveGame(targetSocket) {
+    if (!targetSocket) return false;
+    const roomId = socketToRoom.get(targetSocket.id);
+    const room = roomId && games[roomId];
+    return !!(room && room.gameState && !room.gameState.gameOver);
+  }
+
+  function sendPartyMembersHome(party) {
+    party.members.forEach(m => {
+      if (!m.socketId) return;
+      const memberSocket = io.sockets.sockets.get(m.socketId);
+      if (!memberSocket || isSocketInActiveGame(memberSocket)) return;
+      pullSocketFromWaitingAreas(memberSocket);
+      io.to(m.socketId).emit('returnHome', { expandParty: true });
+    });
+  }
+
   // Helper: cancel pending expiry timer for a guest and refresh their DB row
   async function refreshGuestSession(guestSessionId, socketId) {
     console.log(`[GuestAuth] Refreshing guest session ${guestSessionId} for socket ${socketId}`);
@@ -434,6 +542,10 @@ nextApp.prepare().then(() => {
       const room = games[roomId];
       if (!room) return;
 
+      room.players.forEach(player => {
+        if (player.username) revokePendingPartyInvitesForMember(player.username);
+      });
+
       // Randomize turn order for online matches so join order does not decide first turn.
       room.players = shuffleArray(room.players);
 
@@ -599,6 +711,9 @@ nextApp.prepare().then(() => {
         room.players.push(playerEntry);
         socket.emit('joined', room.players.length - 1); // player index
         if (room.players.length === 2) {
+          room.players.forEach(player => {
+            if (player.username) revokePendingPartyInvitesForMember(player.username);
+          });
           // Start game
           const { initializeGame } = require('./lib/game');
           room.gameState = initializeGame();
@@ -644,6 +759,8 @@ nextApp.prepare().then(() => {
           games[roomId].gameState.players[idx].username = p.username;
         }
       });
+
+      if (socket.username) revokePendingPartyInvitesForMember(socket.username);
 
       socket.join(roomId);
       // Send the FULL game state (do not use getPlayerGameState to hide cards)
@@ -731,6 +848,8 @@ nextApp.prepare().then(() => {
 
       socketToRoom.set(socket.id, roomId);
       socket.join(roomId);
+
+      if (socket.username) revokePendingPartyInvitesForMember(socket.username);
 
       matchHistory.startMatch(games[roomId], roomId).then(() => {
         socket.emit('gameStart', gameState, humanPlayerIndex, roomId);
@@ -1139,6 +1258,7 @@ nextApp.prepare().then(() => {
       games[roomId].players.push(entry);
 
       socket.emit('lobbyCreated', roomId, 1, tp, [creatorUsername]);
+      revokePendingPartyInvitesForMember(creatorUsername);
 
       if (invitedPlayers.length > 0) {
         for (const friend of invitedPlayers) {
@@ -1370,7 +1490,13 @@ nextApp.prepare().then(() => {
       const memberList = party.members.map(m => ({ username: m.username }));
       party.members.forEach(m => {
         io.to(m.socketId).emit('partyUpdate', { creator: inviterUsername, members: memberList });
+        if (m.username !== socket.username) {
+          io.to(m.socketId).emit('partyMemberJoined', { username: socket.username });
+        }
       });
+
+      pullSocketFromWaitingAreas(socket);
+      sendPartyMembersHome(party);
     });
 
     socket.on('leaveParty', () => {
@@ -1489,6 +1615,10 @@ nextApp.prepare().then(() => {
         ? targetPlayers
         : ((allowPartialStart && playerCount < targetPlayers) ? playerCount : targetPlayers);
       room.targetPlayers = finalPlayerCount;
+
+      room.players.forEach(player => {
+        if (player.username) revokePendingPartyInvitesForMember(player.username);
+      });
 
       const { initializeGame } = require('./lib/game');
       room.gameState = initializeGame(finalPlayerCount);

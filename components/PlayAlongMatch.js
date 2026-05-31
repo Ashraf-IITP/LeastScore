@@ -190,9 +190,9 @@ export function playAlongCardStyle(card, { discardGlow = false, drawnGlow = fals
   return {
     cursor: 'pointer',
     margin: '5px',
-    padding: '8px 6px',
+    padding: '8px 6px 20px',
     minWidth: '54px',
-    minHeight: '78px',
+    minHeight: '90px',
     borderRadius: '12px',
     border,
     background,
