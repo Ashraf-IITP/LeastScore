@@ -3824,7 +3824,7 @@ export default function Home() {
                                 <span>
                                     {passScreen ? `Pass to ${myPlayer.username}` : `Your Hand (${myPlayer.hand.length} cards)`}
                                 </span>
-                                {isPlayAlong && !passScreen && (
+                                {!passScreen && (
                                     <span className="ls-badge">Sum: {getHandSum(myPlayer.hand)}</span>
                                 )}
                             </p>
