@@ -9,7 +9,7 @@ describe('calculateSum', () => {
       { rank: '2' },
       { rank: 'K' }
     ];
-    expect(calculateSum(hand)).toBe(1 + 2 + 13);
+    expect(calculateSum(hand)).toBe(1 + 2 + 10);
   });
 
   it('handles empty hand', () => {

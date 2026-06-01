@@ -2183,7 +2183,7 @@ export default function Home() {
             const myPlayer = gameState.players[myPlayerIndex];
             if (myPlayer && myPlayer.eliminated && !eliminatedSoundPlayedRef.current) {
                 eliminatedSoundPlayedRef.current = true;
-                playSound('/sound/you were eliminated.mp3', 'game');
+                playSound('/sound/round lost.mp3', 'game');
             } else if (myPlayer && !myPlayer.eliminated) {
                 eliminatedSoundPlayedRef.current = false;
             }
