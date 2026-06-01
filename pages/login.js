@@ -2,6 +2,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { playBGM, stopBGM, setBGMVolume } from '../lib/bgm';
+import { loadSoundSettings, getVolumeForCategory } from '../lib/soundSettings';
+
 
 // ── SVG Brand Icons ───────────────────────────────────────────
 const GoogleIcon = () => (
@@ -45,6 +48,8 @@ export default function Login() {
 
   const [loginUser, setLoginUser] = useState('');
   const [loginPass, setLoginPass] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
 
   const [regName, setRegName] = useState('');
   const [regTag, setRegTag] = useState('');
@@ -71,11 +76,8 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
-    const audio = new Audio('/sound/home page song.mp3');
-    audio.loop = true;
-    
     const onInteract = () => {
-      audio.play().catch(() => {});
+      playBGM();
       document.removeEventListener('click', onInteract);
       document.removeEventListener('keydown', onInteract);
       document.removeEventListener('touchstart', onInteract);
@@ -84,14 +86,16 @@ export default function Login() {
       document.removeEventListener('wheel', onInteract);
     };
 
-    audio.play().catch(() => {
-      document.addEventListener('click', onInteract);
-      document.addEventListener('keydown', onInteract);
-      document.addEventListener('touchstart', onInteract);
-      document.addEventListener('scroll', onInteract);
-      document.addEventListener('touchmove', onInteract);
-      document.addEventListener('wheel', onInteract);
-    });
+    const settings = loadSoundSettings();
+    setBGMVolume(getVolumeForCategory(settings, 'home'));
+    playBGM();
+
+    document.addEventListener('click', onInteract);
+    document.addEventListener('keydown', onInteract);
+    document.addEventListener('touchstart', onInteract);
+    document.addEventListener('scroll', onInteract);
+    document.addEventListener('touchmove', onInteract);
+    document.addEventListener('wheel', onInteract);
 
     return () => {
       document.removeEventListener('click', onInteract);
@@ -100,10 +104,10 @@ export default function Login() {
       document.removeEventListener('scroll', onInteract);
       document.removeEventListener('touchmove', onInteract);
       document.removeEventListener('wheel', onInteract);
-      audio.pause();
-      audio.currentTime = 0;
+      // Do not stop BGM on unmount, let it persist
     };
   }, []);
+
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
@@ -146,6 +150,8 @@ export default function Login() {
       const target = e.target.closest('button, .link-text, .logo-card-wrap');
       if (target) {
         const audio = new Audio('/sound/touch%20sound.wav');
+        const settings = loadSoundSettings();
+        audio.volume = getVolumeForCategory(settings, 'click');
         audio.play().catch(() => {});
       }
     };
@@ -168,7 +174,14 @@ export default function Login() {
   const handleLogin = () => go(async () => {
     const d = await post('/api/auth/login', { username: loginUser, password: loginPass });
     if (d.error) return setError(d.error);
+    if (d.mustResetPassword) return router.replace('/reset-password');
     router.replace('/');
+  });
+
+  const handleForgotPassword = () => go(async () => {
+    const d = await post('/api/auth/forgot-password', { email: forgotEmail });
+    if (d.error) return setError(d.error);
+    setForgotSent(true);
   });
 
   const handleOAuthUsername = () => go(async () => {
@@ -183,7 +196,7 @@ export default function Login() {
   });
 
   const handleGuest = () => go(async () => {
-    const d = await post('/api/auth/guest', { displayName: guestName, tag: guestTag });
+    const d = await post('/api/auth/guest', {});
     if (d.error) return setError(d.error);
     router.replace('/');
   });
@@ -201,7 +214,7 @@ export default function Login() {
     window.location.href = `/api/auth/oauth/${provider}`;
   };
 
-  const changeView = (v) => { setView(v); setError(''); setSuccess(''); };
+  const changeView = (v) => { setView(v); setError(''); setSuccess(''); setForgotSent(false); setForgotEmail(''); };
 
   if (checking) return (
     <div className="mobile-app-container">
@@ -719,6 +732,12 @@ export default function Login() {
         }
         .input-group input::placeholder { color: #3D4A5A; }
         .input-row { display: flex; gap: 10px; }
+        .field-hint {
+          font-size: 12.5px;
+          color: #A8B6CC;
+          margin: -6px 0 14px;
+          line-height: 1.45;
+        }
 
         /* ── Username hint ── */
         .username-hint {
@@ -802,6 +821,17 @@ export default function Login() {
           padding: 4px 10px;
           border-radius: 100px;
           margin-bottom: 18px;
+        }
+        /* ── Forgot password success icon ── */
+        .forgot-success-icon {
+          font-size: 52px;
+          text-align: center;
+          margin: 0 0 20px;
+          animation: iconPop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes iconPop {
+          from { transform: scale(0.5); opacity: 0; }
+          to   { transform: scale(1); opacity: 1; }
         }
       `}</style>
 
@@ -893,14 +923,9 @@ export default function Login() {
                   <button className="btn-back" onClick={() => changeView('main')}>← Back</button>
                   <h2 className="view-title">Guest Login</h2>
                   <p className="view-desc">
-                    Play without an account. Your username will be reserved while you're connected.
+                    Play without an account. A random username and tag will be assigned automatically.
                   </p>
-                  <div className="input-row">
-                    <div style={{ flex: 2 }}><Field label="Name" value={guestName} onChange={setGuestName} placeholder="YourName" maxLength={20} /></div>
-                    <div style={{ flex: 1 }}><Field label="#ID" value={guestTag} onChange={v => setGuestTag(v.toUpperCase())} placeholder="AB12" maxLength={4} /></div>
-                  </div>
-                  {usernameHint(guestName, guestTag)}
-                  <button className="btn-primary mt-4" onClick={handleGuest} disabled={loading || !guestName || guestTag.length < 4}>
+                  <button className="btn-primary mt-4" onClick={handleGuest} disabled={loading}>
                     {loading ? 'Joining…' : 'Play as Guest 🎮'}
                   </button>
                 </div>
@@ -917,6 +942,50 @@ export default function Login() {
                   <button className="btn-primary mt-4" onClick={handleLogin} disabled={loading || !loginUser || !loginPass}>
                     {loading ? 'Logging in…' : 'Log In'}
                   </button>
+                  <div className="footer-links">
+                    <span className="link-text" onClick={() => changeView('forgot')}>Forgot password?</span>
+                  </div>
+                </div>
+              )}
+
+              {/* ── FORGOT PASSWORD VIEW ── */}
+              {view === 'forgot' && (
+                <div className="view-animate">
+                  <button className="btn-back" onClick={() => changeView('login')}>← Back</button>
+                  <h2 className="view-title">Reset Password</h2>
+                  {!forgotSent ? (
+                    <>
+                      <p className="view-desc">
+                        Enter the email linked to your account. We'll send you a temporary password.
+                      </p>
+                      <Field
+                        label="Email Address"
+                        type="email"
+                        value={forgotEmail}
+                        onChange={setForgotEmail}
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                      />
+                      <button
+                        className="btn-primary mt-4"
+                        onClick={handleForgotPassword}
+                        disabled={loading || !forgotEmail.includes('@')}
+                      >
+                        {loading ? 'Sending…' : '📧 Send Temporary Password'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="forgot-success-icon">✉️</div>
+                      <p className="view-desc" style={{ textAlign: 'center', marginTop: 0 }}>
+                        If an account with that email exists, a temporary password has been sent.
+                        Check your inbox and use it to log in.
+                      </p>
+                      <button className="btn-secondary mt-4" onClick={() => changeView('login')}>
+                        Go to Login
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -931,6 +1000,8 @@ export default function Login() {
                     <div style={{ flex: 2 }}><Field label="Name" value={regName} onChange={setRegName} placeholder="YourName" maxLength={20} /></div>
                     <div style={{ flex: 1 }}><Field label="#ID" value={regTag} onChange={v => setRegTag(v.toUpperCase())} placeholder="AB12" maxLength={4} /></div>
                   </div>
+                  <p className="field-hint">Name must be 3–20 characters: letters, numbers, or underscore.</p>
+                  <p className="field-hint">Tag must be exactly 4 uppercase letters or digits.</p>
                   {usernameHint(regName, regTag)}
                   <button className="btn-gold" onClick={handleOAuthUsername} disabled={loading || !regName || regTag.length < 4}>
                     {loading ? 'Saving…' : 'Set Username & Play 🎮'}

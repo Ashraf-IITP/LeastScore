@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     // Registered user — verify token_version matches DB
     const pool = getPool();
     const [rows] = await pool.query(
-      'SELECT id, display_name, tag, auth_provider, token_version FROM users WHERE id = ?',
+      'SELECT id, display_name, tag, auth_provider, token_version, must_reset_password FROM users WHERE id = ?',
       [decoded.userId]
     );
     if (!rows.length || rows[0].token_version !== decoded.tokenVersion) {
@@ -41,12 +41,13 @@ export default async function handler(req, res) {
     const u = rows[0];
     return res.json({
       user: {
-        type:         'registered',
-        id:           u.id,
-        username:     `${u.display_name}#${u.tag}`,
-        display_name: u.display_name,
-        tag:          u.tag,
-        auth_provider: u.auth_provider,
+        type:              'registered',
+        id:                u.id,
+        username:          `${u.display_name}#${u.tag}`,
+        display_name:      u.display_name,
+        tag:               u.tag,
+        auth_provider:     u.auth_provider,
+        mustResetPassword: !!u.must_reset_password,
       },
     });
   } catch (err) {

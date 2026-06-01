@@ -47,12 +47,14 @@ Run tests: `npm test`
 
 Test cases cover these in `tests/hand.test.js`.
 
-UPDATE 1.72:
+UPDATE 1.73:
 Table Style Player Cards on game page
 Hard Bots present gain added (previously future gains only)
 Turn order changed every round
 K Q A only sequence allowed in circular
 Named Bots
 Cards Bigger and Overlapping Casino Style
-
+Settings added
+Forget Password added
+Change password added
 

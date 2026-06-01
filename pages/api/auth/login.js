@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   try {
     const pool = getPool();
     const [rows] = await pool.query(
-      `SELECT id, display_name, tag, password_hash, token_version, auth_provider
+      `SELECT id, display_name, tag, password_hash, token_version, auth_provider, must_reset_password
        FROM users WHERE display_name = ? AND tag = ?`,
       [displayName, tag]
     );
@@ -42,17 +42,20 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Incorrect username or password.' });
     }
 
+    const mustReset = !!user.must_reset_password;
     const token = signJWT({
-      userId:        user.id,
-      tokenVersion:  user.token_version,
-      username:      formatUsername(user.display_name, user.tag),
-      display_name:  user.display_name,
-      tag:           user.tag,
-      type:          'registered',
+      userId:           user.id,
+      tokenVersion:     user.token_version,
+      username:         formatUsername(user.display_name, user.tag),
+      display_name:     user.display_name,
+      tag:              user.tag,
+      type:             'registered',
+      mustResetPassword: mustReset,
     });
     setAuthCookie(res, token);
     return res.json({
       ok: true,
+      mustResetPassword: mustReset,
       user: { username: formatUsername(user.display_name, user.tag), display_name: user.display_name, tag: user.tag },
     });
   } catch (err) {

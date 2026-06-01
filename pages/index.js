@@ -20,6 +20,8 @@ import {
     playAlongCardStyle,
     getHandSum,
 } from '../components/PlayAlongMatch';
+import { loadSoundSettings, getVolumeForCategory, DEFAULT_SOUND_SETTINGS } from '../lib/soundSettings';
+import { playBGM, stopBGM, setBGMVolume } from '../lib/bgm';
 
 // ── Shared Design Tokens ──────────────────────────────────────
 const COLORS = {
@@ -453,12 +455,15 @@ const GLOBAL_CSS = `
     border: 1px solid rgba(255,255,255,0.08);
     color: #A8B4C2;
     border-radius: 10px;
-    padding: 6px 12px;
+    padding: 10px 16px;
     font-family: 'DM Sans', sans-serif;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
+  }
+  .ls-user-actions .ls-user-chip {
+    padding: 10px 14px;
   }
   .btn-icon:hover { background: rgba(255,255,255,0.08); color: #F0F4FF; }
   .btn-icon.danger { color: #FC8181; border-color: rgba(239,68,68,0.2); }
@@ -1696,6 +1701,116 @@ const GLOBAL_CSS = `
     flex: 1 1 280px;
     min-width: 260px;
   }
+  .ls-menu-logo-wrap {
+    margin-bottom: 5px;
+    position: relative;
+  }
+
+  /* ── Top toolbar — settings & logout ── */
+  .ls-top-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 20;
+  }
+
+  .ls-toolbar-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #A8B4C2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: visible;
+  }
+  .ls-toolbar-btn.settings {
+    color: #FFC857;
+    border-color: rgba(255,200,87,0.15);
+  }
+  .ls-toolbar-btn.logout {
+    color: #FC8181;
+    border-color: rgba(239,68,68,0.15);
+  }
+  .ls-toolbar-btn svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s;
+  }
+  .ls-toolbar-btn:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,200,87,0.3);
+    color: #FFC857;
+    box-shadow: 0 0 20px rgba(255,200,87,0.15), 0 4px 12px rgba(0,0,0,0.3);
+    transform: translateY(-1px);
+  }
+  .ls-toolbar-btn:active {
+    transform: scale(0.92);
+  }
+  .ls-toolbar-btn.settings:hover svg {
+    transform: rotate(90deg);
+  }
+  .ls-toolbar-btn.logout {
+    border-color: rgba(239,68,68,0.15);
+  }
+  .ls-toolbar-btn.logout:hover {
+    background: rgba(239,68,68,0.1);
+    border-color: rgba(239,68,68,0.35);
+    color: #FC8181;
+    box-shadow: 0 0 20px rgba(239,68,68,0.12), 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  /* Tooltip for toolbar buttons */
+  .ls-toolbar-btn::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: rgba(13,17,23,0.95);
+    color: #A8B4C2;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .ls-toolbar-btn:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── User identity badge ── */
+  .ls-user-identity {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 12px;
+    width: 100%;
+  }
+  .ls-user-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 16px;
+    width: 100%;
+  }
 
   /* ── Friends panel collapsible (mobile only) ── */
   /* The header is always visible; only the body collapses */
@@ -1737,6 +1852,13 @@ const GLOBAL_CSS = `
     .ls-menu-game-card {
       order: 2;
       width: 100%;
+      margin-top: 0;
+    }
+
+    .ls-menu-logo-wrap {
+      order: 0;
+      width: 100%;
+      margin-bottom: 0;
     }
 
     .ls-friends-panel-header {
@@ -1939,6 +2061,17 @@ export default function Home() {
     const [roundSummary, setRoundSummary] = useState(null);
     const [summaryCountdown, setSummaryCountdown] = useState(0);
     const summaryTimerRef = useRef(null);
+    const [soundSettings, setSoundSettings] = useState(() => loadSoundSettings());
+    const soundSettingsRef = useRef(soundSettings);
+    useEffect(() => { soundSettingsRef.current = soundSettings; }, [soundSettings]);
+    useEffect(() => { setSoundSettings(loadSoundSettings()); }, []);
+    const getVolume = useCallback((category) => getVolumeForCategory(soundSettingsRef.current, category), []);
+    const playSound = useCallback((src, category) => {
+        const audio = new Audio(src);
+        audio.volume = getVolume(category);
+        audio.play().catch(() => { });
+        return audio;
+    }, [getVolume]);
     const gameModeRef = useRef(gameMode);
     useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
     const gameStateRef = useRef(gameState);
@@ -1963,11 +2096,12 @@ export default function Home() {
     }, []);
 
     useEffect(() => {
-        let audio;
         const isPlayingGame = !!gameState || gameMode === 'tutorial_observe';
 
         const onInteract = () => {
-            if (audio) audio.play().catch(() => { });
+            if (!isPlayingGame) {
+                playBGM();
+            }
             document.removeEventListener('click', onInteract);
             document.removeEventListener('keydown', onInteract);
             document.removeEventListener('touchstart', onInteract);
@@ -1977,17 +2111,19 @@ export default function Home() {
         };
 
         if (!isPlayingGame) {
-            audio = new Audio('/sound/home page song.mp3');
-            audio.loop = true;
-            audio.play().catch(() => {
-                document.addEventListener('click', onInteract);
-                document.addEventListener('keydown', onInteract);
-                document.addEventListener('touchstart', onInteract);
-                document.addEventListener('scroll', onInteract);
-                document.addEventListener('touchmove', onInteract);
-                document.addEventListener('wheel', onInteract);
-            });
+            const currentSettings = loadSoundSettings();
+            setBGMVolume(getVolumeForCategory(currentSettings, 'home'));
+            playBGM();
+            document.addEventListener('click', onInteract);
+            document.addEventListener('keydown', onInteract);
+            document.addEventListener('touchstart', onInteract);
+            document.addEventListener('scroll', onInteract);
+            document.addEventListener('touchmove', onInteract);
+            document.addEventListener('wheel', onInteract);
+        } else {
+            stopBGM();
         }
+
         return () => {
             document.removeEventListener('click', onInteract);
             document.removeEventListener('keydown', onInteract);
@@ -1995,18 +2131,14 @@ export default function Home() {
             document.removeEventListener('scroll', onInteract);
             document.removeEventListener('touchmove', onInteract);
             document.removeEventListener('wheel', onInteract);
-            if (audio) {
-                audio.pause();
-                audio.currentTime = 0;
-            }
+            // DO NOT PAUSE BGM ON UNMOUNT, so it keeps playing in settings page
         };
     }, [!!gameState, gameMode === 'tutorial_observe']);
 
     useEffect(() => {
         if (gameState && gameState.currentPlayer !== undefined) {
             if (gameMode !== 'pass_and_play') {
-                const audio = new Audio('/sound/turn sound.mp3');
-                audio.play().catch(() => { });
+                playSound('/sound/turn sound.mp3', 'game');
             }
         }
     }, [gameState?.currentPlayer, gameMode]);
@@ -2051,7 +2183,7 @@ export default function Home() {
             const myPlayer = gameState.players[myPlayerIndex];
             if (myPlayer && myPlayer.eliminated && !eliminatedSoundPlayedRef.current) {
                 eliminatedSoundPlayedRef.current = true;
-                new Audio('/sound/you were eliminated.mp3').play().catch(() => { });
+                playSound('/sound/you were eliminated.mp3', 'game');
             } else if (myPlayer && !myPlayer.eliminated) {
                 eliminatedSoundPlayedRef.current = false;
             }
@@ -2066,8 +2198,7 @@ export default function Home() {
 
             const target = e.target.closest('button, .ls-link-text, .link-text, .ls-logo-card-wrap, .logo-card-wrap, .ls-mode-card, .ls-checkbox-row, .ls-tab');
             if (target) {
-                const audio = new Audio('/sound/touch%20sound.wav');
-                audio.play().catch(() => { });
+                playSound('/sound/touch%20sound.wav', 'click');
             }
         };
 
@@ -2097,6 +2228,9 @@ export default function Home() {
             .then(data => {
                 if (!data.user) {
                     router.replace('/login');
+                } else if (data.user.mustResetPassword) {
+                    // Temp password used — force them to set a new one before playing
+                    router.replace('/reset-password');
                 } else {
                     setUsername(data.user.username);
                     setUserType(data.user.type || '');
@@ -2363,9 +2497,9 @@ export default function Home() {
                         const amIEliminated = state.players[myPlayerIdx]?.eliminated;
                         if (myScoreChange !== null && !amIEliminated) {
                             if (myScoreChange > 0) {
-                                new Audio('/sound/round lost.mp3').play().catch(() => { });
+                                playSound('/sound/round lost.mp3', 'game');
                             } else {
-                                new Audio('/sound/round won.mp3').play().catch(() => { });
+                                playSound('/sound/round won.mp3', 'game');
                             }
                         }
                     }
@@ -2400,7 +2534,7 @@ export default function Home() {
         });
 
         newSocket.on('guestDisconnected', (state, guestPlayerIndex) => {
-            new Audio('/sound/disconnected.mp3').play().catch(() => { });
+            playSound('/sound/disconnected.mp3', 'game');
             setGameState(state); setPlayerWhoExited(guestPlayerIndex); setSelectedCards([]); setVisibleIndex(null);
             if (Object.keys(disconnectChoiceTimersRef.current).length > 0) { for (const key of Object.keys(disconnectChoiceTimersRef.current)) clearInterval(disconnectChoiceTimersRef.current[key]); disconnectChoiceTimersRef.current = {}; }
             setDisconnectDecisions({});
@@ -2410,7 +2544,7 @@ export default function Home() {
         });
 
         newSocket.on('playerDisconnected', (disconnectedPlayerIndex, isGuestDisconnect, expiresAt) => {
-            new Audio('/sound/disconnected.mp3').play().catch(() => { });
+            playSound('/sound/disconnected.mp3', 'game');
             const initialSeconds = expiresAt ? Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)) : 60;
             setPollCountdowns(prev => ({ ...prev, [disconnectedPlayerIndex]: initialSeconds }));
             setDisconnectDecisions(prev => ({ ...prev, [disconnectedPlayerIndex]: { disconnectedPlayerIndex, isGuestDisconnect: isGuestDisconnect === true } }));
@@ -2450,7 +2584,7 @@ export default function Home() {
         });
 
         newSocket.on('opponentReconnected', (reconnectedUserType, reconnectedIndex) => {
-            new Audio('/sound/disconnected.mp3').play().catch(() => { });
+            playSound('/sound/disconnected.mp3', 'game');
             if (typeof reconnectedIndex === 'number') {
                 const timers = disconnectChoiceTimersRef.current;
                 if (timers[reconnectedIndex]) { clearInterval(timers[reconnectedIndex]); delete timers[reconnectedIndex]; }
@@ -2467,7 +2601,7 @@ export default function Home() {
         });
 
         newSocket.on('opponentReconnectedAndExited', (reconnectedUserType) => {
-            new Audio('/sound/disconnected.mp3').play().catch(() => { });
+            playSound('/sound/disconnected.mp3', 'game');
             for (const key of Object.keys(disconnectChoiceTimersRef.current)) clearInterval(disconnectChoiceTimersRef.current[key]);
             disconnectChoiceTimersRef.current = {}; setDisconnectDecisions({}); setPollCountdowns({}); setEliminationPolls({});
             setTimeout(() => {
@@ -2495,7 +2629,7 @@ export default function Home() {
             if (localIndex !== -1 && localIndex === eliminatedPlayerIndex) {
                 setTimeout(() => alert('You have been eliminated. Redirecting to leaderboard.'), 50);
             } else {
-                new Audio('/sound/someone else eliminated.mp3').play().catch(() => { });
+                playSound('/sound/someone else eliminated.mp3', 'game');
                 const reasonText = info && info.reason === 'exit' ? 'exited and is therefore eliminated' : 'has been eliminated';
                 setTimeout(() => alert(`${name} ${reasonText}.`), 50);
             }
@@ -2530,7 +2664,7 @@ export default function Home() {
         });
 
         newSocket.on('playerLeftMultiplayer', (playerIndex) => {
-            new Audio('/sound/disconnected.mp3').play().catch(() => { });
+            playSound('/sound/disconnected.mp3', 'game');
             setTimeout(() => {
                 alert(`Player ${playerIndex + 1} disconnected from the multiplayer game.`);
             }, 100);
@@ -2568,10 +2702,15 @@ export default function Home() {
     const joinRoom = () => { if (socket && matchRoomId && username) socket.emit('joinRoom', matchRoomId, username); };
     const joinQueue = () => { if (socket && username) socket.emit('joinQueue', username); };
 
+    const requestGuestUpgrade = () => {
+        if (socket) socket.emit('guestUpgradeIntent');
+        return fetch('/api/auth/guest/upgrade-intent', { method: 'POST' }).catch(() => null);
+    };
+
     const tryOnlineMode = () => {
         if (userType === 'guest') {
             const ok = window.confirm('Online mode is available only for registered users.\n\nClick OK to register now, or Cancel to go back.');
-            if (ok) { if (socket) socket.emit('guestUpgradeIntent'); fetch('/api/auth/guest/upgrade-intent', { method: 'POST' }).catch(() => null).finally(() => router.push('/login?upgradeGuest=1')); }
+            if (ok) { requestGuestUpgrade().finally(() => router.push('/login?upgradeGuest=1')); }
             return;
         }
         setGameMode('online');
@@ -2668,7 +2807,7 @@ export default function Home() {
     };
 
     const exitGame = () => {
-        new Audio('/sound/touch sound.wav').play().catch(() => { });
+        playSound('/sound/touch sound.wav', 'click');
         const isLocalGame = gameMode === 'pass_and_play' || gameMode === 'ai' || gameMode === 'play_along';
         const msg = isLocalGame ? 'Do you want to end this game?' : 'Are you sure you want to exit? This will count as a declaration and your opponent will win.';
         setTimeout(() => {
@@ -2849,18 +2988,32 @@ export default function Home() {
                     {/* Left: Game modes */}
                     <div className="ls-main-menu-game-col">
                         <div className="ls-menu-logo-wrap">
+                            <div className="ls-top-toolbar">
+                                <button className="ls-toolbar-btn settings" onClick={() => router.push('/settings')} data-tooltip="Settings" aria-label="Settings">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="3" />
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                    </svg>
+                                </button>
+                                <button className="ls-toolbar-btn logout" onClick={handleLogout} data-tooltip="Logout" aria-label="Logout">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                        <polyline points="16 17 21 12 16 7" />
+                                        <line x1="21" y1="12" x2="9" y2="12" />
+                                    </svg>
+                                </button>
+                            </div>
                             <LogoHeader badge="The card game where less wins" />
+                            <div className="ls-user-identity">
+                                <div className="ls-user-chip" style={{ margin: 0 }}>
+                                    <span>👤</span>
+                                    <strong>{username}</strong>
+                                </div>
+                            </div>
                         </div>
                         <div className="ls-card ls-menu-game-card">
                             <div className="ls-section-header" style={{ marginBottom: '16px' }}>
                                 <h3>Game Modes</h3>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <div className="ls-user-chip" style={{ margin: 0 }}>
-                                        <span>👤</span>
-                                        <strong>{username}</strong>
-                                    </div>
-                                    <button className="btn-icon danger" onClick={handleLogout}>Logout</button>
-                                </div>
                             </div>
                             {gameModes.map((mode, i) => (
                                 <button key={i} className="ls-mode-card" onClick={mode.action} style={{ animationDelay: `${i * 0.07}s` }}>
@@ -3052,7 +3205,7 @@ export default function Home() {
                                         <p style={{ color: '#8896A7', fontSize: '13px', marginTop: '6px', lineHeight: 1.6 }}>
                                             Create an account to add friends, form a party, and play together.
                                         </p>
-                                        <button className="btn-primary mt-4" onClick={() => router.push('/login')}>Register Now</button>
+                                        <button className="btn-primary mt-4" onClick={() => requestGuestUpgrade().finally(() => router.push('/login?upgradeGuest=1'))}>Register Now</button>
                                     </div>
                                 </div>
                             </div>
@@ -3726,7 +3879,7 @@ export default function Home() {
                         {/* Action buttons */}
                         {turnFinishedScreen ? (
                             <button className="btn-gold" onClick={() => {
-                                new Audio('/sound/turn sound.mp3').play().catch(() => { });
+                                playSound('/sound/turn sound.mp3', 'game');
                                 try { const AudioContext = window.AudioContext || window.webkitAudioContext; if (AudioContext) { const ctx = new AudioContext(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = 440; osc.type = 'triangle'; gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15); osc.start(); osc.stop(ctx.currentTime + 0.15); } } catch (e) { }
                                 setTurnFinishedScreen(false); setPassScreen(true); setMyPlayerIndex(gameState.currentPlayer);
                             }}>
@@ -3734,7 +3887,7 @@ export default function Home() {
                             </button>
                         ) : passScreen ? (
                             <button className="btn-primary" onClick={() => {
-                                new Audio('/sound/turn sound.mp3').play().catch(() => { });
+                                playSound('/sound/turn sound.mp3', 'game');
                                 try { const AudioContext = window.AudioContext || window.webkitAudioContext; if (AudioContext) { const ctx = new AudioContext(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = 880; osc.type = 'sine'; gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1); osc.start(); osc.stop(ctx.currentTime + 0.1); } } catch (e) { }
                                 setPassScreen(false);
                             }}>
