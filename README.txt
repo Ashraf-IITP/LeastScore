@@ -47,14 +47,19 @@ Run tests: `npm test`
 
 Test cases cover these in `tests/hand.test.js`.
 
-UPDATE 1.73:
-Table Style Player Cards on game page
-Hard Bots present gain added (previously future gains only)
-Turn order changed every round
-K Q A only sequence allowed in circular
-Named Bots
-Cards Bigger and Overlapping Casino Style
-Settings added
-Forget Password added
-Change password added
-
+UPDATE 1.80:
+K J Q is 10
+Display the sum of your hand
+Eliminated sound change
+Make the selected pop up more than hover
+Cards get deselected on someone else's turn
+Graphical back of deck (with thickness)
+Updated the Players table on game page
+Fixed Pass and Play
+Can't declare on first round 
+Settings on game page
+Voting update on Online Match
+Fixed back gesture in mobile
+Play button on Party Creation 
+Remove from the party if disconnected for > 60 secs
+When in a party and inside match history/tutorials
