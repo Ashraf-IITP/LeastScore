@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import {
   MiniCardRow,
@@ -1636,6 +1636,7 @@ export default function MatchHistory({ onBack }) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [expandedMove, setExpandedMove] = useState(null);
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(true);
+  const isPopstateRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -1681,6 +1682,32 @@ export default function MatchHistory({ onBack }) {
     })();
     return () => { cancelled = true; };
   }, [selectedId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePopState = (e) => {
+      if (e.state && e.state.matchHistoryDetail) {
+        isPopstateRef.current = true;
+        setSelectedId(e.state.matchHistoryDetail);
+        return;
+      }
+      if (selectedId) {
+        isPopstateRef.current = true;
+        setSelectedId(null);
+        return;
+      }
+      onBack();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    if (selectedId && !isPopstateRef.current) {
+      window.history.pushState({ matchHistoryDetail: selectedId }, '', '');
+    }
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [selectedId, onBack]);
 
   if (selectedId && detail) {
     const rankedPlayers = [...detail.participants].sort((a, b) => {

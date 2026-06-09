@@ -25,6 +25,7 @@ function gameState(players, roundStartPlayer = 0) {
     gameOver: false,
     winner: null,
     roundHistory: [],
+    turnsPlayedInRound: 99,
   };
 }
 

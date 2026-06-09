@@ -1412,6 +1412,23 @@ export default function Rules() {
     return () => document.removeEventListener('click', playClickSound);
   }, []);
 
+  // Ensure browser back from /rules returns to the Tutorial overlay instead of Home
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // Push a marker state so we can detect when user navigates back
+    try { window.history.pushState({ lsRules: true }, '', ''); } catch (e) { /* ignore */ }
+
+    const handlePop = (e) => {
+      // If the popped state still has our marker, allow normal behavior
+      if (e.state && e.state.lsRules) return;
+      // Otherwise treat as back from rules -> go to tutorial
+      router.replace('/?mode=tutorial');
+    };
+
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, []);
+
   return (
     <>
       {socialOverlay}

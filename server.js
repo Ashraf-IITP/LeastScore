@@ -190,6 +190,24 @@ nextApp.prepare().then(() => {
   const parties = new Map();
   // Map of username -> creatorUsername (to find which party a user belongs to)
   const userToPartyCreator = new Map();
+  const partyDisconnectTimers = new Map(); // username -> timeoutHandle
+  const tutorialPresence = new Map(); // username -> { socketId, mode, updatedAt }
+  const TUTORIAL_PRESENCE_TTL_MS = 10 * 60 * 1000;
+
+  function clearExpiredTutorialPresence() {
+    const now = Date.now();
+    for (const [username, presence] of tutorialPresence.entries()) {
+      if (!presence || now - presence.updatedAt > TUTORIAL_PRESENCE_TTL_MS) {
+        tutorialPresence.delete(username);
+      }
+    }
+  }
+
+  function isUserInTutorial(username) {
+    if (!username) return false;
+    clearExpiredTutorialPresence();
+    return tutorialPresence.has(username);
+  }
 
   async function revokePendingPartyInvitesForParty(creatorName) {
     const party = parties.get(creatorName);
@@ -440,6 +458,12 @@ nextApp.prepare().then(() => {
             const member = party.members.find(m => m.username === decoded.username);
             if (member) {
               member.socketId = socket.id;
+              
+              if (partyDisconnectTimers.has(decoded.username)) {
+                clearTimeout(partyDisconnectTimers.get(decoded.username));
+                partyDisconnectTimers.delete(decoded.username);
+              }
+
               // Sync the reconnected user's local state
               socket.emit('partyUpdate', { creator: creatorName, members: party.members.map(m => ({ username: m.username })) });
             }
@@ -459,6 +483,21 @@ nextApp.prepare().then(() => {
         checkActiveReconnection(socket.username);
       }
     } catch (e) { console.error('active match check failed:', e.message); }
+
+    socket.on('tutorialPresence', (state = {}) => {
+      const username = socket.username || (typeof state.username === 'string' ? state.username.trim() : '');
+      if (!username) return;
+
+      if (state.inTutorial) {
+        tutorialPresence.set(username, {
+          socketId: socket.id,
+          mode: typeof state.mode === 'string' ? state.mode : 'tutorial',
+          updatedAt: Date.now()
+        });
+      } else {
+        tutorialPresence.delete(username);
+      }
+    });
 
     // Helper: check if player is already in an active game and reconnect them
     function checkActiveReconnection(username) {
@@ -1206,6 +1245,14 @@ nextApp.prepare().then(() => {
           return;
         }
 
+        const tutorialPartyMembers = uniquePartyUsers.filter(isUserInTutorial);
+        if (tutorialPartyMembers.length > 0) {
+          const memberList = tutorialPartyMembers.join(', ');
+          const playerLabel = tutorialPartyMembers.length === 1 ? 'is' : 'are';
+          socket.emit('error', `${memberList} ${playerLabel} inside Tutorials, ask them to leave before creating the lobby.`);
+          return;
+        }
+
         const pool = getPool();
         for (const partyUsername of uniquePartyUsers) {
           const parsed = parseUsername(partyUsername);
@@ -1509,6 +1556,10 @@ nextApp.prepare().then(() => {
 
       party.members = party.members.filter(m => m.username !== socket.username);
       userToPartyCreator.delete(socket.username);
+      if (partyDisconnectTimers.has(socket.username)) {
+        clearTimeout(partyDisconnectTimers.get(socket.username));
+        partyDisconnectTimers.delete(socket.username);
+      }
       socket.emit('partyUpdate', { creator: null, members: [] });
 
       if (party.members.length === 0) {
@@ -1548,6 +1599,10 @@ nextApp.prepare().then(() => {
 
       party.members = party.members.filter(m => m.username !== targetUsername);
       userToPartyCreator.delete(targetUsername);
+      if (partyDisconnectTimers.has(targetUsername)) {
+        clearTimeout(partyDisconnectTimers.get(targetUsername));
+        partyDisconnectTimers.delete(targetUsername);
+      }
 
       io.to(targetMember.socketId).emit('partyUpdate', { creator: null, members: [] });
       io.to(targetMember.socketId).emit('error', 'You have been removed from the party.');
@@ -2084,6 +2139,45 @@ nextApp.prepare().then(() => {
 
       // Capture room ID before deleting mapping
       const currentRoomId = socketToRoom.get(socket.id);
+
+      if (socket.username) {
+        const creatorName = userToPartyCreator.get(socket.username);
+        if (creatorName) {
+          const party = parties.get(creatorName);
+          if (party && party.members.length > 1) {
+            const timer = setTimeout(() => {
+              partyDisconnectTimers.delete(socket.username);
+              const currentCreatorName = userToPartyCreator.get(socket.username);
+              if (currentCreatorName) {
+                const currentParty = parties.get(currentCreatorName);
+                if (currentParty) {
+                  currentParty.members = currentParty.members.filter(m => m.username !== socket.username);
+                  userToPartyCreator.delete(socket.username);
+
+                  if (currentParty.members.length === 0) {
+                    parties.delete(currentCreatorName);
+                  } else {
+                    let newCreatorName = currentCreatorName;
+                    if (currentCreatorName === socket.username) {
+                      newCreatorName = currentParty.members[0].username;
+                      parties.delete(currentCreatorName);
+                      parties.set(newCreatorName, currentParty);
+                      currentParty.members.forEach(m => userToPartyCreator.set(m.username, newCreatorName));
+                    }
+                    const memberList = currentParty.members.map(m => ({ username: m.username }));
+                    currentParty.members.forEach(m => {
+                      if (m.socketId) {
+                        io.to(m.socketId).emit('partyUpdate', { creator: newCreatorName, members: memberList });
+                      }
+                    });
+                  }
+                }
+              }
+            }, 60000);
+            partyDisconnectTimers.set(socket.username, timer);
+          }
+        }
+      }
 
       // Clean up socket-to-room mapping
       socketToRoom.delete(socket.id);
