@@ -1,0 +1,1285 @@
+/* ─────────────────────────────────────────────────────
+   LeastScore — Rich Green Felt Theme (v7 — Gold Edition)
+   Applied when <html data-theme="light">
+
+   Concept: layered green felt with depth and atmosphere.
+   The background is never a flat colour — it's built from
+   multiple radial gradients creating a natural table lamp
+   glow effect with at least 6 distinct green tones.
+
+   GREEN SCALE (darkest → brightest)
+     g0  #0F2318  deepest shadow corner
+     g1  #142D1E  page base dark
+     g2  #1A3D2B  primary felt dark
+     g3  #1E4D32  felt mid
+     g4  #225239  felt nav surface
+     g5  #2E7D52  felt bright accent
+     g6  #3A9E68  fill / progress
+     g7  #5DC98A  highlight / glow
+     g8  #A8D8B8  muted text on felt
+     g9  #FEFFFD  card header tint (on white)
+     g10 #F2FBF5  card panel headers
+     g11 #E4F5EA  card warm surface
+     g12 #D8F0E0  card face (near white)
+
+   GOLD SCALE (shiny secondary — v7)
+     gold0  #7A5500  deep gold shadow
+     gold1  #A0700A  rich gold dark
+     gold2  #C8960A  primary gold (warnings / UI chrome)
+     gold3  #E0AD18  mid gold
+     gold4  #F0C832  bright gold
+     gold5  #F8E070  pale gold highlight
+     goldBg #FFFBE8  gold tint surface
+     goldRim rgba(200,150,10,0.32)  border gold
+
+   CARD SURFACES (floating on the felt)
+     cardFace    #D8F0E0  primary white panels
+     cardWarm    #E4F5EA  card warm variant
+     cardTint    #F2FBF5  panel headers, input bg
+     cardDeep    #FEFFFD  rows, stepper bg
+
+   INK (on white card surfaces)
+     ink         #0D2118  scores, primary headings
+     ink2        #1A3D2B  body text
+     inkSoft     #5A8C72  captions, secondary labels
+
+   ACCENTS
+     red         #D63B3B  active turn, Declare, risk
+     redPale     #FDEAEA  red fills
+     gold        #C8960A  logo, rank #1, progress, stepper val, btn-gold
+     purple      #6040C8  bot reasoning, hint
+     purplePale  #F0EEFF  purple fills
+───────────────────────────────────────────────────── */
+
+/* ── Base: layered gradient background ── */
+[data-theme="light"] body,
+[data-theme="light"] .ls-container,
+[data-theme="light"] .mobile-app-container {
+  background: #0F2318;
+}
+
+[data-theme="light"] .ls-frame,
+[data-theme="light"] .mobile-frame {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M13 18 C13 15 11 13 8.5 13 C6 13 4 15.5 4 18 C4 21 8.5 26 13 30 C17.5 26 22 21 22 18 C22 15.5 20 13 17.5 13 C15 13 13 15 13 18 Z' fill='%23000' opacity='0.13'/%3E%3Cpath d='M53 10 C53 10 44 17 44 22 C44 25 46.5 27 49.5 26.5 C48 28.5 47 30 47 30 L59 30 C59 30 58 28.5 56.5 26.5 C59.5 27 62 25 62 22 C62 17 53 10 53 10 Z' fill='%23000' opacity='0.13'/%3E%3Ccircle cx='13' cy='55' r='4.5' fill='%23000' opacity='0.13'/%3E%3Ccircle cx='18.5' cy='62' r='4.5' fill='%23000' opacity='0.13'/%3E%3Ccircle cx='7.5' cy='62' r='4.5' fill='%23000' opacity='0.13'/%3E%3Crect x='11' y='63' width='4' height='6' rx='1' fill='%23000' opacity='0.13'/%3E%3Cpath d='M53 50 L60 60 L53 70 L46 60 Z' fill='%23000' opacity='0.13'/%3E%3C/svg%3E") repeat,
+    radial-gradient(ellipse 110% 55% at 50% 0%, #2E7D4F 0%, transparent 60%),
+    radial-gradient(ellipse 80% 50% at 100% 40%, #1B5C38 0%, transparent 55%),
+    radial-gradient(ellipse 70% 45% at 0% 70%, #163E28 0%, transparent 55%),
+    radial-gradient(ellipse 90% 60% at 50% 100%, #0D2B1A 0%, transparent 70%),
+    linear-gradient(175deg, #1E4D32 0%, #142D1E 40%, #0F2318 100%);
+  box-shadow:
+    0 40px 100px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* ── Background mesh ── */
+[data-theme="light"] .ls-bg-mesh,
+[data-theme="light"] .bg-mesh {
+  background:
+    radial-gradient(ellipse 65% 45% at 95% 5%, rgba(214, 59, 59, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 40% at 5% 95%, rgba(93, 201, 138, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 35% at 80% 85%, rgba(46, 125, 82, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 20% 20%, rgba(30, 77, 50, 0.22) 0%, transparent 55%);
+}
+
+/* ── Noise ── */
+[data-theme="light"] .ls-noise,
+[data-theme="light"] .noise-overlay {
+  opacity: 0.030;
+}
+
+/* ── Suit particles ── */
+[data-theme="light"] .suit-particle {
+  color: rgba(255, 255, 255, 0.10);
+}
+
+/* ── Card surface ── */
+[data-theme="light"] .ls-card,
+[data-theme="light"] .card-surface {
+  background: linear-gradient(160deg, #D8F0E0 0%, #E4F5EA 100%);
+  border: 1px solid rgba(13, 33, 24, 0.10);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 1.0) inset,
+    0 -1px 0 rgba(13, 33, 24, 0.06) inset,
+    0 16px 40px rgba(0, 0, 0, 0.24);
+}
+
+/* ── Typography on card surfaces ── */
+[data-theme="light"] .ls-section-title,
+[data-theme="light"] .view-title,
+[data-theme="light"] .ls-friends-panel-title,
+[data-theme="light"] .ls-section-header h3,
+[data-theme="light"] .ls-empty-state-title,
+[data-theme="light"] .ls-friends-notice-title,
+[data-theme="light"] .ls-global-social-overlay .ls-friends-notice-title,
+[data-theme="light"] .ls-checkbox-text,
+[data-theme="light"] .ls-mode-label,
+[data-theme="light"] .settings-section-title,
+[data-theme="light"] .settings-slider-row {
+  color: #0D2118;
+}
+
+[data-theme="light"] .ls-logo-title,
+[data-theme="light"] .logo-title {
+  color: #D8F0E0;
+}
+
+[data-theme="light"] .ls-player-name,
+[data-theme="light"] .ls-bot-label,
+[data-theme="light"] .ls-friend-name,
+[data-theme="light"] .ls-party-summary-label,
+[data-theme="light"] .ls-player-card-name,
+[data-theme="light"] .ls-player-card-score,
+[data-theme="light"] .ls-round-table td {
+  color: #0D2118;
+}
+
+[data-theme="light"] .ls-section-desc,
+[data-theme="light"] .ls-logo-sub,
+[data-theme="light"] .logo-subtitle,
+[data-theme="light"] .ls-friends-panel-sub,
+[data-theme="light"] .ls-bot-sub,
+[data-theme="light"] .ls-friend-status,
+[data-theme="light"] .ls-empty-state-copy,
+[data-theme="light"] .ls-party-summary-copy,
+[data-theme="light"] .ls-zone-label,
+[data-theme="light"] .ls-player-card-stat-label,
+[data-theme="light"] .ls-reasoning-line,
+[data-theme="light"] .ls-checkbox-sub,
+[data-theme="light"] .ls-stepper-label,
+[data-theme="light"] .ls-round-table th,
+[data-theme="light"] .ls-mode-desc {
+  color: #fff4dc;
+}
+
+[data-theme="light"] .ls-friends-notice-kicker,
+[data-theme="light"] .ls-global-social-overlay .ls-friends-notice-kicker {
+  color: #A0700A;
+}
+
+[data-theme="light"] .ls-friends-notice-more,
+[data-theme="light"] .ls-global-social-overlay .ls-friends-notice-more {
+  color: #5A8C72;
+}
+
+[data-theme="light"] .view-desc,
+[data-theme="light"] .settings-note {
+  color: #1E4D32;
+}
+
+/* ── Top bar brand — warm gold on felt ── */
+/* Gold here reads as premium house branding, like a casino nameplate */
+[data-theme="light"] .ls-topbar-brand {
+  color: #F0C832;
+  text-shadow: 0 1px 8px rgba(200, 150, 10, 0.45), 0 0 24px rgba(248, 224, 112, 0.22);
+  letter-spacing: -0.4px;
+}
+
+[data-theme="light"] .ls-round-table th {
+  border-bottom: 1px solid rgba(13, 33, 24, 0.10);
+}
+
+[data-theme="light"] .ls-round-table td {
+  border-bottom: 1px solid rgba(13, 33, 24, 0.06);
+}
+
+/* ── Input labels ── */
+[data-theme="light"] .ls-input-group label,
+[data-theme="light"] .input-group label {
+  color: #5A8C72;
+}
+
+/* ── Inputs ── */
+[data-theme="light"] .ls-input-group input,
+[data-theme="light"] .ls-input-group select,
+[data-theme="light"] .input-group input,
+[data-theme="light"] .ls-copy-input,
+[data-theme="light"] .pw-field {
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+  border: 1px solid rgba(13, 33, 24, 0.12);
+  color: #0D2118;
+}
+
+[data-theme="light"] .ls-input-group input:focus,
+[data-theme="light"] .ls-input-group select:focus,
+[data-theme="light"] .input-group input:focus,
+[data-theme="light"] .pw-field:focus {
+  border-color: rgba(58, 158, 104, 0.70);
+  box-shadow: 0 0 0 3px rgba(58, 158, 104, 0.14);
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+}
+
+[data-theme="light"] .ls-input-group input::placeholder,
+[data-theme="light"] .input-group input::placeholder,
+[data-theme="light"] .pw-field::placeholder {
+  color: #8ABEA4;
+}
+
+/* ── Range slider ── */
+[data-theme="light"] input[type='range'] {
+  accent-color: #C8960A;
+}
+
+/* ── Logo accent — gold shimmer underline ── */
+/* The logo is the crown; gold shimmer = premium house mark */
+[data-theme="light"] .ls-logo-title::after,
+[data-theme="light"] .logo-title::after {
+  background: linear-gradient(90deg, transparent, #E0AD18, #F8E070, #E0AD18, transparent);
+  box-shadow: 0 0 18px rgba(200, 150, 10, 0.60), 0 0 36px rgba(248, 224, 112, 0.20);
+}
+
+[data-theme="light"] .ls-logo-badge,
+[data-theme="light"] .logo-badge,
+[data-theme="light"] .ls-user-chip {
+  background: linear-gradient(135deg, rgba(200, 150, 10, 0.18), rgba(248, 224, 112, 0.12));
+  border: 1px solid rgba(255, 204, 65, 0.4);
+  color: #ffc439;
+  text-shadow: 0 1px 2px rgba(200, 150, 10, 0.15);
+}
+
+/* ── Links ── */
+[data-theme="light"] .ls-link-text,
+[data-theme="light"] .link-text,
+[data-theme="light"] .ls-user-chip strong,
+[data-theme="light"] .ls-friends-notice-name,
+[data-theme="light"] .ls-global-social-overlay .ls-friends-notice-name,
+[data-theme="light"] .ls-stepper-val {
+  color: #225239;
+}
+
+[data-theme="light"] .ls-lobby-note {
+  color: #225239;
+}
+
+[data-theme="dark"] .ls-lobby-start-early {
+  color: #FFFFFF;
+}
+
+[data-theme="light"] .ls-link-text:hover,
+[data-theme="light"] .link-text:hover {
+  border-color: rgba(34, 82, 57, 0.55);
+}
+
+/* ── Stepper value — gold to signal a chosen number matters ── */
+[data-theme="light"] .ls-stepper-val {
+  color: #A0700A;
+  font-weight: 700;
+  text-shadow: 0 1px 4px rgba(200, 150, 10, 0.18);
+}
+
+/* ── Badges ── */
+[data-theme="light"] .ls-badge {
+  background: rgba(46, 125, 82, 0.10);
+  border-color: rgba(46, 125, 82, 0.24);
+  color: #1E4D32;
+}
+
+[data-theme="light"] .ls-badge.blue {
+  background: rgba(96, 64, 200, 0.09);
+  border-color: rgba(96, 64, 200, 0.22);
+  color: #4A30A0;
+}
+
+[data-theme="light"] .ls-badge.green {
+  background: rgba(46, 125, 82, 0.12);
+  border-color: rgba(46, 125, 82, 0.28);
+  color: #1E4D32;
+}
+
+[data-theme="light"] .ls-badge.red {
+  background: rgba(214, 59, 59, 0.10);
+  border-color: rgba(214, 59, 59, 0.26);
+  color: #D63B3B;
+}
+
+/* ── Gold badge — enriched shiny treatment ── */
+[data-theme="light"] .ls-badge.gold {
+  background: linear-gradient(135deg, rgba(200, 150, 10, 0.18), rgba(248, 224, 112, 0.12));
+  border-color: rgba(200, 150, 10, 0.40);
+  color: #7A5500;
+  text-shadow: 0 1px 2px rgba(200, 150, 10, 0.15);
+}
+
+/* ── Hand sum badge — gold styling to match dark theme ── */
+[data-theme="light"] .hand-sum {
+  background: linear-gradient(135deg, rgba(200, 150, 10, 0.18), rgba(248, 224, 112, 0.12));
+  border-color: rgba(255, 204, 65, 0.4);
+  color: #ffc439;
+  text-shadow: 0 1px 2px rgba(200, 150, 10, 0.15);
+}
+
+/* ── User chip ── */
+[data-theme="light"] .ls-user-chip {
+  background: linear-gradient(135deg, rgba(200, 150, 10, 0.18), rgba(248, 224, 112, 0.12));
+  border: 1px solid rgba(255, 204, 65, 0.4);
+  color: #ffc439;
+  text-shadow: 0 1px 2px rgba(200, 150, 10, 0.15);
+}
+
+[data-theme="light"] .ls-user-chip span {
+  color: #ffc439;
+}
+
+/* ── Primary button: rich gradient green ── */
+[data-theme="light"] .btn-primary {
+  background: linear-gradient(160deg, #2E7D52 0%, #1A4D30 100%);
+  color: #ECFFF4;
+  box-shadow: 0 4px 16px rgba(30, 77, 48, 0.48), 0 1px 0 rgba(255, 255, 255, 0.10) inset;
+}
+
+[data-theme="light"] .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(160deg, #3A9E68 0%, #225239 100%);
+  box-shadow: 0 8px 24px rgba(30, 77, 48, 0.55);
+}
+
+/* ── Gold button — shiny casino gold, used for premium/positive actions ── */
+/* e.g. "Claim bonus", "Join table", "Continue" — celebratory, not dangerous */
+[data-theme="light"] .btn-gold {
+  background: linear-gradient(160deg, #E0AD18 0%, #A0700A 100%);
+  color: #FFFBE8;
+  box-shadow:
+    0 4px 16px rgba(160, 112, 10, 0.50),
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 -1px 0 rgba(122, 85, 0, 0.30) inset;
+  text-shadow: 0 1px 2px rgba(100, 65, 0, 0.35);
+}
+
+[data-theme="light"] .btn-gold:hover:not(:disabled) {
+  background: linear-gradient(160deg, #F0C832 0%, #C8960A 100%);
+  box-shadow:
+    0 8px 28px rgba(160, 112, 10, 0.58),
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 0 0 1px rgba(248, 224, 112, 0.30);
+}
+
+/* Make the partially-filled lobby start button look like gold, but only in light theme */
+[data-theme="light"] .btn-green.friends-start {
+  background: linear-gradient(160deg, #E0AD18 0%, #A0700A 100%);
+  color: #FFFBE8;
+  box-shadow:
+    0 4px 16px rgba(160, 112, 10, 0.50),
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 -1px 0 rgba(122, 85, 0, 0.30) inset;
+  text-shadow: 0 1px 2px rgba(100, 65, 0, 0.35);
+  border: none;
+}
+
+[data-theme="light"] .btn-green.friends-start:hover:not(:disabled) {
+  background: linear-gradient(160deg, #F0C832 0%, #C8960A 100%);
+  box-shadow:
+    0 8px 28px rgba(160, 112, 10, 0.58),
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 0 0 1px rgba(248, 224, 112, 0.30);
+}
+
+[data-theme="light"] .btn-green.friends-start:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Secondary button ── */
+[data-theme="light"] .btn-secondary {
+  background: linear-gradient(160deg, #FEFFFD, #F0FBF7);
+  color: #1A3D2B;
+  border: 1px solid rgba(13, 33, 24, 0.12);
+}
+
+[data-theme="light"] .btn-secondary:hover:not(:disabled) {
+  background: linear-gradient(160deg, #E0F8F2, #D0F2E8);
+  color: #0D2118;
+}
+
+/* ── Danger button ── */
+[data-theme="light"] .btn-danger {
+  background: rgba(214, 59, 59, 0.10);
+  color: #D63B3B;
+  border: 1px solid rgba(214, 59, 59, 0.26);
+}
+
+[data-theme="light"] .btn-danger:hover:not(:disabled) {
+  background: rgba(214, 59, 59, 0.18);
+}
+
+/* Make the lobby "Leave / Cancel" button in Play with Friends match the Declare button, but only in light theme */
+[data-theme="light"] .btn-danger.friends-declare {
+  background: linear-gradient(160deg, #D63B3B 0%, #A82B2B 100%);
+  color: #FFFFFF;
+  box-shadow: 0 4px 16px rgba(168, 43, 43, 0.44), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  border: none;
+}
+
+[data-theme="light"] .btn-danger.friends-declare:hover:not(:disabled) {
+  background: linear-gradient(160deg, #E05050 0%, #C03030 100%);
+  box-shadow: 0 8px 24px rgba(168, 43, 43, 0.52);
+}
+
+[data-theme="light"] .btn-danger.friends-declare:disabled {
+  background: linear-gradient(160deg, #E0F8F2, #D0F2E8);
+  color: #8ABEA4;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+/* ── Green button ── */
+[data-theme="light"] .btn-green {
+  background: rgba(46, 125, 82, 0.12);
+  color: #1E4D32;
+  border: 1px solid rgba(46, 125, 82, 0.28);
+}
+
+[data-theme="light"] .btn-green:hover:not(:disabled) {
+  background: rgba(46, 125, 82, 0.20);
+}
+
+/* ── Back button ── */
+[data-theme="light"] .btn-back {
+  color: #5DC98A;
+}
+
+[data-theme="light"] .btn-back:hover {
+  color: #93DFB0;
+}
+
+/* ── Icon button ── */
+[data-theme="light"] .btn-icon {
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+  border: 1px solid rgba(13, 33, 24, 0.10);
+  color: #5A8C72;
+}
+
+[data-theme="light"] .btn-icon:hover {
+  background: linear-gradient(160deg, #FEFFFD, #F0FBF7);
+  color: #0D2118;
+}
+
+[data-theme="light"] .btn-icon.danger {
+  color: #D63B3B;
+  border-color: rgba(214, 59, 59, 0.24);
+}
+
+[data-theme="light"] .btn-icon.danger:hover {
+  background: rgba(214, 59, 59, 0.09);
+}
+
+[data-theme="light"] .btn-icon.success {
+  color: #1E4D32;
+  border-color: rgba(30, 77, 50, 0.28);
+}
+
+[data-theme="light"] .btn-icon.success:hover {
+  background: rgba(30, 77, 50, 0.10);
+}
+
+/* ── Toolbar — on felt ── */
+[data-theme="light"] .ls-toolbar-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.60);
+}
+
+[data-theme="light"] .ls-toolbar-btn.settings {
+  color: #FFC857;
+  border-color: rgba(255, 200, 87, 0.15);
+}
+
+[data-theme="light"] .ls-toolbar-btn.logout {
+  color: #F08080;
+  border-color: rgba(240, 128, 128, 0.30);
+}
+
+[data-theme="light"] .ls-toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #FFFFFF;
+  box-shadow: 0 0 20px rgba(255, 200, 87, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+[data-theme="light"] .ls-toolbar-btn.settings:hover {
+  background: rgba(255, 200, 87, 0.14);
+  border-color: rgba(255, 200, 87, 0.30);
+  color: #FFC857;
+  box-shadow: 0 0 20px rgba(255, 200, 87, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .ls-toolbar-btn.logout:hover {
+  background: rgba(214, 59, 59, 0.20);
+  border-color: rgba(214, 59, 59, 0.40);
+  color: #F08080;
+}
+
+[data-theme="light"] .ls-toolbar-btn::after {
+  background: #1A3D2B;
+  color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+/* ── Divider ── */
+[data-theme="light"] .ls-divider .line,
+[data-theme="light"] .divider .line {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="light"] .ls-divider .text,
+[data-theme="light"] .divider .text {
+  color: rgba(255, 255, 255, 0.20);
+}
+
+[data-theme="light"] .ls-divider .text.ls-friends-panel-note,
+[data-theme="light"] .divider .text.ls-friends-panel-note {
+  color: #225239;
+}
+
+/* ── Alerts ── */
+[data-theme="light"] .ls-alert-error,
+[data-theme="light"] .alert-error {
+  background: rgba(214, 59, 59, 0.09);
+  border: 1px solid rgba(214, 59, 59, 0.26);
+  color: #B82E2E;
+}
+
+[data-theme="light"] .ls-alert-success,
+[data-theme="light"] .alert-success {
+  background: rgba(46, 125, 82, 0.10);
+  border: 1px solid rgba(46, 125, 82, 0.26);
+  color: #1E4D32;
+}
+
+[data-theme="light"] .ls-alert-info {
+  background: rgba(96, 64, 200, 0.09);
+  border: 1px solid rgba(96, 64, 200, 0.22);
+  color: #4A30A0;
+}
+
+/* ── Tabs: gradient felt pill, white active with gold underline accent ── */
+[data-theme="light"] .ls-tabs {
+  background: linear-gradient(180deg, rgba(14, 40, 24, 0.92) 0%, rgba(18, 50, 30, 0.80) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+[data-theme="light"] .ls-tab {
+  color: rgba(160, 220, 180, 0.40);
+}
+
+[data-theme="light"] .ls-tab.active {
+  background: linear-gradient(160deg, #FFFFFF 0%, #F4FFF8 100%);
+  color: #0D2118;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.24),
+    0 -2px 0 #E0AD18 inset;
+  /* gold bottom-of-top edge = active indicator */
+}
+
+/* ── Player / friend / bot rows ── */
+[data-theme="light"] .ls-player-row,
+[data-theme="light"] .ls-bot-row,
+[data-theme="light"] .ls-friend-row,
+[data-theme="light"] .ls-checkbox-row {
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+  border: 1px solid rgba(13, 33, 24, 0.08);
+}
+
+[data-theme="light"] .ls-player-row:hover {
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+}
+
+[data-theme="light"] .ls-friend-row:hover {
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+  border-color: rgba(13, 33, 24, 0.14);
+}
+
+/* ── Party summary ── */
+[data-theme="light"] .ls-party-summary {
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+  border: 1px solid rgba(13, 33, 24, 0.08);
+}
+
+/* ── Empty state ── */
+[data-theme="light"] .ls-empty-state {
+  border: 1px dashed rgba(13, 33, 24, 0.16);
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+}
+
+/* ── Progress bar — gold fill: "jackpot meter" energy ── */
+/* On a green felt, a gold progress bar reads as earnings filling up */
+[data-theme="light"] .ls-progress-wrap {
+  background: rgba(0, 0, 0, 0.28);
+}
+
+[data-theme="light"] .ls-progress-bar {
+  background: linear-gradient(90deg, #C8960A, #E0AD18, #F8E070, #E0AD18);
+  background-size: 200% 100%;
+  box-shadow: 0 0 10px rgba(200, 150, 10, 0.50), 0 0 24px rgba(248, 224, 112, 0.18);
+}
+
+/* ── Copy row ── */
+[data-theme="light"] .ls-copy-input {
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+  border: 1px solid rgba(13, 33, 24, 0.10);
+  color: #5A8C72;
+}
+
+/* ── Stepper ── */
+[data-theme="light"] .ls-stepper-btn {
+  background: linear-gradient(160deg, #F2FBF5, #E0F8F2);
+  border: 1px solid rgba(13, 33, 24, 0.10);
+  color: #0D2118;
+}
+
+[data-theme="light"] .ls-stepper-btn:hover {
+  background: linear-gradient(160deg, #FEFFFD, #F0FBF7);
+}
+
+/* ── Rank rows ── */
+[data-theme="light"] .ls-rank-row {
+  border: 1px solid rgba(13, 33, 24, 0.08);
+}
+
+/* ── Rank #1 — rich shiny gold ── */
+/* Trophy row: the winner gets the full gold treatment */
+[data-theme="light"] .ls-rank-row.gold {
+  background: linear-gradient(135deg, rgba(248, 224, 112, 0.20), rgba(200, 150, 10, 0.12), rgba(248, 224, 112, 0.08));
+  border-color: rgba(200, 150, 10, 0.42);
+  box-shadow: 0 0 0 1px rgba(248, 224, 112, 0.18) inset, 0 2px 10px rgba(200, 150, 10, 0.14);
+}
+
+[data-theme="light"] .ls-rank-row.silver {
+  background: rgba(90, 140, 114, 0.10);
+  border-color: rgba(90, 140, 114, 0.22);
+}
+
+[data-theme="light"] .ls-rank-row.bronze {
+  background: rgba(160, 100, 60, 0.09);
+  border-color: rgba(160, 100, 60, 0.22);
+}
+
+[data-theme="light"] .ls-rank-row.default {
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+}
+
+/* ── Score chips ── */
+[data-theme="light"] .ls-score-chip.zero {
+  background: #EAFDEE;
+  color: #2E7D52;
+  border: 1px solid rgba(46, 125, 82, 0.26);
+}
+
+[data-theme="light"] .ls-score-chip.pos {
+  background: #FDEAEA;
+  color: #D63B3B;
+  border: 1px solid rgba(214, 59, 59, 0.26);
+}
+
+/* ── Status dots ── */
+[data-theme="light"] .ls-queue-dot {
+  background: #5DC98A;
+  box-shadow: 0 0 8px rgba(93, 201, 138, 0.70);
+}
+
+[data-theme="light"] .ls-status-dot.online {
+  background: #5DC98A;
+  box-shadow: 0 0 10px rgba(93, 201, 138, 0.70);
+}
+
+[data-theme="light"] .ls-status-dot {
+  background: #8ABEA4;
+}
+
+/* ── Friends avatar ── */
+[data-theme="light"] .ls-friend-avatar {
+  background: linear-gradient(135deg, rgba(46, 125, 82, 0.24), rgba(93, 201, 138, 0.16));
+  border: 1px solid rgba(13, 33, 24, 0.10);
+}
+
+/* ── Friends panel ── */
+[data-theme="light"] .ls-friends-notice,
+[data-theme="light"] .ls-global-social-overlay .ls-friends-notice {
+  border: 1px solid rgba(13, 33, 24, 0.08);
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+  box-shadow: none;
+}
+
+/* ── Party notice — gold border: celebratory, "you're in a party" ── */
+[data-theme="light"] .ls-friends-notice.party,
+[data-theme="light"] .ls-global-social-overlay .ls-friends-notice.party {
+  border-color: rgba(200, 150, 10, 0.40);
+  background: linear-gradient(135deg, rgba(248, 224, 112, 0.14), rgba(200, 150, 10, 0.07));
+  box-shadow: 0 0 0 1px rgba(248, 224, 112, 0.12) inset;
+}
+
+[data-theme="light"] .ls-friends-notice.friend,
+[data-theme="light"] .ls-global-social-overlay .ls-friends-notice.friend {
+  border-color: rgba(46, 125, 82, 0.28);
+  background: rgba(46, 125, 82, 0.07);
+}
+
+[data-theme="light"] .ls-friends-locked-mark {
+  background: rgba(46, 125, 82, 0.10);
+  border: 1px solid rgba(46, 125, 82, 0.22);
+  color: #1E4D32;
+}
+
+[data-theme="light"] .ls-friends-dropdown-toggle {
+  border: 1px solid rgba(46, 125, 82, 0.26);
+  background: rgba(46, 125, 82, 0.10);
+  color: #1E4D32;
+}
+
+[data-theme="light"] .ls-friends-dropdown-toggle:hover {
+  background: rgba(46, 125, 82, 0.18);
+  border-color: rgba(46, 125, 82, 0.38);
+}
+
+[data-theme="light"] .ls-friends-panel-sub {
+  color: #225239;
+  /* dark green used for online counts */
+  font-weight: 600;
+}
+
+[data-theme="light"] .ls-friends-panel-note {
+  color: #225239;
+}
+
+[data-theme="light"] .ls-divider .line.ls-friends-panel-note {
+  background: rgba(34, 82, 57, 0.35);
+}
+
+/* ── Toast ── */
+[data-theme="light"] .ls-global-social-toast,
+[data-theme="light"] .ls-global-social-overlay .ls-global-social-toast {
+  border: 1px solid rgba(200, 150, 10, 0.40);
+  background: linear-gradient(135deg, rgba(248, 224, 112, 0.14), rgba(200, 150, 10, 0.07));
+  color: #0D2118;
+  box-shadow: 0 0 0 1px rgba(248, 224, 112, 0.12) inset, 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Global Overlay Buttons (Light Theme overrides) ── */
+[data-theme="light"] .ls-global-social-overlay .btn-gold {
+  background: linear-gradient(160deg, #E0AD18 0%, #A0700A 100%);
+  color: #FFFBE8;
+  box-shadow:
+    0 4px 16px rgba(160, 112, 10, 0.50),
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 -1px 0 rgba(122, 85, 0, 0.30) inset;
+  text-shadow: 0 1px 2px rgba(100, 65, 0, 0.35);
+}
+
+[data-theme="light"] .ls-global-social-overlay .btn-secondary {
+  background: linear-gradient(160deg, #FEFFFD, #F0FBF7);
+  color: #1A3D2B;
+  border: 1px solid rgba(13, 33, 24, 0.12);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ── Top bar — layered felt dark ── */
+[data-theme="light"] .ls-topbar {
+  background: linear-gradient(180deg, rgba(10, 28, 18, 0.92) 0%, rgba(14, 36, 22, 0.75) 100%);
+  border-bottom: 1px solid rgba(200, 150, 10, 0.18);
+  /* gold hairline under topbar */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme="light"] .ls-topbar-exit {
+  background: rgba(214, 59, 59, 0.18);
+  border: 1px solid rgba(214, 59, 59, 0.34);
+  color: #F08080;
+}
+
+[data-theme="light"] .ls-topbar-exit:hover {
+  background: rgba(214, 59, 59, 0.26);
+}
+
+/* ── Overlay ── */
+[data-theme="light"] .ls-overlay {
+  background: linear-gradient(160deg, rgba(30, 77, 50, 0.97), rgba(15, 35, 24, 0.97));
+}
+
+/* ── Game zone panels ── */
+[data-theme="light"] .ls-zone {
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+  border: 1px solid rgba(13, 33, 24, 0.08);
+}
+
+[data-theme="light"] .ls-zone.active,
+[data-theme="light"] .ls-zone.your-hand-zone {
+  background: linear-gradient(160deg, rgba(58, 158, 104, 0.14), rgba(46, 125, 82, 0.08));
+  border-color: rgba(58, 158, 104, 0.38);
+  box-shadow: 0 0 0 1px rgba(58, 158, 104, 0.14) inset;
+}
+
+/* ── Draw zone — keep as light green ── */
+[data-theme="light"] .ls-draw-zone {
+  background: linear-gradient(160deg, #E4F5EA, #D8F0E0);
+}
+
+/* ── Player scoreboard cards ── */
+[data-theme="light"] .ls-player-card {
+  --ls-scoreboard-divider: rgba(13, 33, 24, 0.12);
+  --ls-scoreboard-header-color: #5A8C72;
+  --ls-scoreboard-name-color: #1E4D32;
+  --ls-scoreboard-me-color: #A0700A;
+  --ls-scoreboard-text-color: #0D2118;
+  --ls-scoreboard-muted-color: #5A8C72;
+  --ls-scoreboard-red-color: #B32626;
+  --ls-scoreboard-total-color: #1E4D32;
+  --ls-scoreboard-active-total-color: #A0700A;
+  background: linear-gradient(160deg, #D8F0E0 0%, #E4F5EA 100%);
+  border: 1px solid rgba(13, 33, 24, 0.10);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.20), 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .ls-scoreboard-wrap {
+  --ls-scoreboard-divider: rgba(13, 33, 24, 0.12);
+  --ls-scoreboard-header-color: #5A8C72;
+}
+
+[data-theme="light"] .ls-draw-zone-title {
+  color: #0D2118;
+}
+
+/* ── Active turn: red top stripe + glow ── */
+[data-theme="light"] .ls-player-card.active-turn {
+  background: linear-gradient(160deg, #FFFFFF 0%, #FFF8F8 100%);
+  border-color: #D63B3B;
+  box-shadow:
+    0 0 0 1.5px rgba(214, 59, 59, 0.28),
+    0 6px 24px rgba(214, 59, 59, 0.22),
+    0 3px 10px rgba(0, 0, 0, 0.18);
+}
+
+[data-theme="light"] .ls-player-card.active-thinking {
+  background: linear-gradient(160deg, #FFFFFF 0%, #FFF3E0 100%);
+}
+
+[data-theme="light"] .ls-player-card.is-me {
+  border-color: rgba(58, 158, 104, 0.45);
+  box-shadow: 0 0 0 1px rgba(58, 158, 104, 0.18), 0 4px 14px rgba(30, 77, 48, 0.16);
+}
+
+[data-theme="light"] .ls-player-card-footer {
+  border-top: 1px solid rgba(13, 33, 24, 0.07);
+}
+
+/* ── Action buttons ── */
+[data-theme="light"] .ls-action-btn.make-turn {
+  background: linear-gradient(160deg, #E0AD18 0%, #A0700A 100%);
+  color: #FFFBE8;
+  box-shadow:
+    0 4px 16px rgba(160, 112, 10, 0.50),
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 -1px 0 rgba(122, 85, 0, 0.30) inset;
+  text-shadow: 0 1px 2px rgba(100, 65, 0, 0.35);
+}
+
+[data-theme="light"] .ls-action-btn.make-turn:hover:not(:disabled) {
+  background: linear-gradient(160deg, #F0C832 0%, #C8960A 100%);
+  box-shadow:
+    0 8px 28px rgba(160, 112, 10, 0.58),
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 0 0 1px rgba(248, 224, 112, 0.30);
+}
+
+[data-theme="light"] .ls-action-btn.make-turn:disabled {
+  background: linear-gradient(160deg, #E0F8F2, #D0F2E8);
+  color: #8ABEA4;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+/* ── Dark theme Make Turn / Show My Cards button */
+[data-theme="dark"] .ls-action-btn.make-turn {
+  --ls-make-turn-bg-start: #3A4DFF;
+  --ls-make-turn-bg-end: #2D3DE6;
+  --ls-make-turn-text: #FFFFFF;
+  --ls-make-turn-radius: 14px;
+
+  background: linear-gradient(135deg, var(--ls-make-turn-bg-start), var(--ls-make-turn-bg-end));
+  color: var(--ls-make-turn-text);
+  box-shadow: 0 4px 16px rgba(58, 77, 255, 0.35);
+  border-radius: var(--ls-make-turn-radius);
+}
+
+[data-theme="dark"] .ls-action-btn.make-turn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(58, 77, 255, 0.5);
+}
+
+[data-theme="dark"] .ls-action-btn.make-turn:disabled {
+  background: rgba(255, 255, 255, 0.04);
+  color: #8896A7;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .ls-action-btn.make-turn:focus-visible {
+  outline: 3px solid rgba(58, 77, 255, 0.75);
+  outline-offset: 3px;
+}
+
+/* Make Declare button look like the Pass Device (gold) button, but only in dark theme */
+[data-theme="dark"] .ls-action-btn.declare {
+  background: linear-gradient(135deg, #FFD166 0%, #FFC857 100%);
+  color: #1A1200;
+  box-shadow: 0 4px 20px rgba(255, 200, 87, 0.30);
+}
+
+[data-theme="dark"] .ls-action-btn.declare:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(255, 200, 87, 0.45);
+}
+
+[data-theme="dark"] .ls-action-btn.declare:disabled {
+  background: rgba(255, 255, 255, 0.04);
+  color: #8896A7;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Minimal HTML example:
+<button class="ls-action-btn make-turn" aria-label="Make Turn">▶ Make Turn</button>
+<button class="ls-action-btn make-turn" aria-label="Show My Cards">🃏 Show My Cards</button>
+*/
+
+[data-theme="light"] .ls-action-btn.declare {
+  background: linear-gradient(160deg, #D63B3B 0%, #A82B2B 100%);
+  color: #FFFFFF;
+  box-shadow: 0 4px 16px rgba(168, 43, 43, 0.44), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+}
+
+[data-theme="light"] .ls-action-btn.declare:hover:not(:disabled) {
+  background: linear-gradient(160deg, #E05050 0%, #C03030 100%);
+  box-shadow: 0 8px 24px rgba(168, 43, 43, 0.52);
+}
+
+[data-theme="light"] .ls-action-btn.declare:disabled {
+  background: linear-gradient(160deg, #E0F8F2, #D0F2E8);
+  color: #8ABEA4;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+[data-theme="light"] .ls-action-btn.hint-btn {
+  background: #F0EEFF;
+  color: #6040C8;
+  border: 1px solid rgba(96, 64, 200, 0.22);
+}
+
+[data-theme="light"] .ls-action-btn.hint-btn:hover:not(:disabled) {
+  background: #E5DCFF;
+}
+
+[data-theme="light"] .ls-action-btn.hint-btn:disabled {
+  background: linear-gradient(160deg, #C8DED2, #B8D0C4);
+  color: #8ABEA4;
+  border-color: rgba(13, 33, 24, 0.08);
+}
+
+/* ── Reasoning panel ── */
+[data-theme="light"] .ls-reasoning-panel {
+  background: linear-gradient(160deg, #D8F0E0 0%, #E4F5EA 100%);
+  border: 1px solid rgba(13, 33, 24, 0.08);
+}
+
+[data-theme="light"] .ls-reasoning-obs {
+  border-bottom: 1px solid rgba(13, 33, 24, 0.06);
+}
+
+[data-theme="light"] .ls-reasoning-panel .ls-reasoning-line {
+  color: #225239;
+}
+
+/* ── Disconnect panel ── */
+[data-theme="light"] .ls-disconnect-panel {
+  background: rgba(200, 150, 10, 0.08);
+  border: 1px solid rgba(200, 150, 10, 0.24);
+}
+
+/* ── Blank card ── */
+[data-theme="light"] .ls-blank-card {
+  background: linear-gradient(160deg, #D8F0E0, #E4F5EA);
+  border: 1px solid rgba(13, 33, 24, 0.10);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 1.0) inset, 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Spinner ── */
+[data-theme="light"] .ls-spinner,
+[data-theme="light"] .premium-spinner {
+  border: 2.5px solid rgba(30, 77, 48, 0.14);
+  border-top-color: #3A9E68;
+  border-right-color: #E0AD18;
+  /* gold quarter-arc on spinner = premium feel */
+}
+
+/* ── Mode cards ── */
+[data-theme="light"] .ls-mode-card {
+  background: linear-gradient(160deg, #D8F0E0 0%, #E4F5EA 100%);
+  border: 1px solid rgba(13, 33, 24, 0.10);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.20);
+}
+
+[data-theme="light"] .ls-mode-card:hover {
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(214, 59, 59, 0.18);
+  border-color: rgba(214, 59, 59, 0.22);
+}
+
+/* Mode card label: use gold for prominence on light theme */
+[data-theme="light"] .ls-mode-card .ls-mode-label {
+  color: #C8960A;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(200, 150, 10, 0.08);
+}
+
+/* ── Settings profile rows ── */
+[data-theme="light"] div[style*="rgba(0,0,0,0.35)"] {
+  background: linear-gradient(160deg, #F2FBF5, #FEFFFD) !important;
+}
+
+/* ── Password eye btn ── */
+[data-theme="light"] .pw-eye {
+  color: #5A8C72;
+}
+
+[data-theme="light"] .pw-eye:hover {
+  color: #0D2118;
+}
+
+/* ── Theme toggle ── */
+[data-theme="light"] .ls-theme-segment {
+  background: linear-gradient(180deg, rgba(14, 40, 24, 0.90) 0%, rgba(18, 50, 30, 0.78) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+[data-theme="light"] .ls-theme-option {
+  color: rgba(160, 220, 180, 0.40);
+}
+
+[data-theme="light"] .ls-theme-option.active {
+  background: linear-gradient(160deg, #FFFFFF 0%, #F4FFF8 100%);
+  color: #0D2118;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+}
+
+/* ── Match History ── */
+[data-theme="light"] .ls-match-history-desc {
+  color: #225239;
+}
+
+[data-theme="light"] .ls-match-box.loss {
+  background: #F6FCF8;
+  border-color: rgba(13, 33, 24, 0.10);
+}
+
+[data-theme="light"] .ls-match-box.loss:hover {
+  background: #F2FBF5;
+}
+
+[data-theme="light"] .ls-match-box.win {
+  background: linear-gradient(160deg, #ffffff 0%, #ffe9b7 100%);
+  border-color: rgba(200, 150, 10, 0.30);
+}
+
+[data-theme="light"] .ls-match-box.win:hover {
+  background: linear-gradient(160deg, #FFFFFF 0%, #fef0c8 100%);
+}
+
+[data-theme="light"] .ls-match-mode {
+  color: #0D2118;
+}
+
+[data-theme="light"] .ls-match-meta {
+  color: #225239;
+}
+
+[data-theme="light"] .ls-match-placement.win {
+  color: #A0700A;
+}
+
+[data-theme="light"] .ls-match-score.win {
+  color: #A0700A;
+}
+
+[data-theme="light"] .ls-match-players-box {
+  background: rgba(13, 33, 24, 0.03);
+  border-color: rgba(13, 33, 24, 0.08);
+  color: #225239;
+}
+
+[data-theme="light"] .ls-match-players-label {
+  color: #225239;
+  opacity: 1;
+}
+
+[data-theme="light"] .ls-match-players-list {
+  color: #225239;
+}
+
+/* ── Match Details View ── */
+[data-theme="light"] .ls-match-details-leaderboard-title,
+[data-theme="light"] .ls-match-details-moves-title {
+  color: #0D2118;
+}
+
+[data-theme="light"] .ls-match-details-date-time {
+  color: #225239;
+}
+
+[data-theme="light"] .ls-match-details-player-name {
+  color: #225239;
+}
+
+[data-theme="light"] .ls-match-details-player-score-default {
+  color: #225239;
+}
+
+[data-theme="light"] .ls-match-details-move-text-primary,
+[data-theme="light"] .ls-match-details-move-text-secondary,
+[data-theme="light"] .ls-match-details-move-text-muted {
+  color: #225239;
+}
+
+[data-theme="light"] .ls-match-details-player-row-default {
+  background: #F6FCF8;
+  border-color: rgba(13, 33, 24, 0.10);
+}
+
+[data-theme="light"] .ls-match-details-player-row-gold {
+  background: linear-gradient(160deg, #ffffff 0%, #ffe9b7 100%);
+  border-color: rgba(200, 150, 10, 0.30);
+}
+
+[data-theme="light"] .ls-match-details-player-row-silver {
+  background: linear-gradient(160deg, #ffffff 0%, #e2e8f0 100%);
+  border-color: rgba(148, 163, 184, 0.40);
+}
+
+[data-theme="light"] .ls-match-details-player-row-bronze {
+  background: linear-gradient(160deg, #ffffff 0%, #ffedd5 100%);
+  border-color: rgba(217, 119, 6, 0.30);
+}
+
+[data-theme="light"] .ls-match-details-move-default,
+[data-theme="light"] .ls-match-details-move-expanded {
+  background: #F6FCF8;
+  border-color: rgba(13, 33, 24, 0.10);
+}
+
+[data-theme="light"] .ls-match-details-move-num-default,
+[data-theme="light"] .ls-match-details-move-num-expanded {
+  color: #225239;
+}
+
+/* ── Expanded Moves Section Overrides (Light Theme) ── */
+[data-theme="light"] .ls-minicard-black {
+  color: #0D2118 !important;
+}
+
+[data-theme="light"] .ls-match-details-expanded-player-name {
+  color: #FFC857 !important;
+}
+
+[data-theme="light"] .ls-match-details-expanded-text {
+  color: #225239 !important;
+}
+
+[data-theme="light"] .ls-match-details-expanded-section {
+  background: #E3F5E9 !important;
+}
+
+[data-theme="light"] .ls-match-details-expanded-divider-top {
+  border-top-color: #F6FCF8 !important;
+}
+
+[data-theme="light"] .ls-match-details-expanded-divider-left {
+  border-left-color: #F6FCF8 !important;
+}
+
+[data-theme="light"] .ls-match-details-expanded-border {
+  border-color: #baefce !important;
+}
+
+/* ── Final Leaderboard Round History Table (Light Theme) ── */
+[data-theme="light"] .ls-round-table th {
+  color: #225239;
+  border-bottom: 1px solid rgba(13, 33, 24, 0.12);
+}
+
+[data-theme="light"] .ls-round-table-final-row {
+  border-top: 1px solid rgba(13, 33, 24, 0.12) !important;
+}
+/* -- Rules Page (Light Theme) -- */
+[data-theme="light"] .ls-rules-container {
+  color: #225239;
+}
+[data-theme="light"] .ls-rules-container p,
+[data-theme="light"] .ls-rules-container ul,
+[data-theme="light"] .ls-rules-container li,
+[data-theme="light"] .ls-rules-container strong,
+[data-theme="light"] .ls-rules-container h3,
+[data-theme="light"] .ls-rules-container h4,
+[data-theme="light"] .ls-rules-container span:not(.ls-rules-badge):not(.text) {
+  color: #225239 !important;
+}
+
+[data-theme="light"] .ls-rules-container .ls-section-title {
+  color: #0D2118 !important;
+}
+
+[data-theme="light"] .ls-rules-box {
+  background: #F6FCF8 !important;
+  border-color: rgba(13, 33, 24, 0.10) !important;
+}
+
+[data-theme="light"] .ls-rules-highlight-success {
+  background: rgba(46, 125, 82, 0.08) !important;
+  border-color: rgba(46, 125, 82, 0.25) !important;
+}
+
+[data-theme="light"] .ls-rules-highlight-danger {
+  background: #FDEAEA !important;
+  border-color: rgba(214, 59, 59, 0.26) !important;
+}
+
+[data-theme="light"] .ls-rules-highlight-danger,
+[data-theme="light"] .ls-rules-highlight-danger p,
+[data-theme="light"] .ls-rules-highlight-danger h4,
+[data-theme="light"] .ls-rules-highlight-danger strong {
+  color: #D63B3B !important;
+}
+
+[data-theme="light"] .ls-rules-badge {
+  background: rgba(46, 125, 82, 0.15) !important;
+  color: #1E4D32 !important;
+}
+
+[data-theme="light"] .ls-rules-container .ls-rules-quote {
+  background: #FFF8E7 !important;
+  border-color: rgba(200, 150, 10, 0.26) !important;
+  color: #A0700A !important;
+}
+
+[data-theme="light"] .ls-rules-container .ls-rules-quote,
+[data-theme="light"] .ls-rules-container .ls-rules-quote p,
+[data-theme="light"] .ls-rules-container .ls-rules-quote h4,
+[data-theme="light"] .ls-rules-container .ls-rules-quote strong {
+  color: #A0700A !important;
+}
+
+[data-theme="light"] .ls-rules-container .ls-alert-error {
+  background: #FDEAEA !important;
+  border-color: rgba(214, 59, 59, 0.26) !important;
+  color: #D63B3B !important;
+}
+
+[data-theme="light"] .ls-rules-divider .text {
+  color: #225239 !important;
+}
+
+[data-theme="light"] .ls-rules-divider .line {
+  background: rgba(34, 82, 57, 0.35) !important;
+}
+
+[data-theme="light"] .ls-alert-info strong {
+  color: #4A30A0 !important;
+}

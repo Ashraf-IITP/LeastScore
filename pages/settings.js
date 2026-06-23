@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { loadSoundSettings, saveSoundSettings, DEFAULT_SOUND_SETTINGS } from '../lib/soundSettings';
 import { playBGM, setBGMVolume } from '../lib/bgm';
+import { loadTheme, saveTheme, applyTheme, resolveTheme } from '../lib/themeSettings';
 
 
 export default function SettingsPage() {
@@ -14,10 +15,16 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [themePref, setThemePref] = useState('system');
+  const [resolvedTheme, setResolvedTheme] = useState('dark');
 
 
 
   // Sounds
+  useEffect(() => {
+    setResolvedTheme(resolveTheme(themePref));
+  }, [themePref]);
+
   useEffect(() => {
     const playClickSound = (e) => {
       const target = e.target.closest('button, .link-text, .logo-card-wrap');
@@ -78,6 +85,7 @@ export default function SettingsPage() {
         setTag((data.user.tag || '').toUpperCase());
         setAuthProvider(data.user.auth_provider || '');
         setSoundSettings(loadSoundSettings());
+        setThemePref(loadTheme());
       })
       .catch(() => {
         router.replace('/login');
@@ -133,9 +141,9 @@ export default function SettingsPage() {
 
               <div className="settings-section" style={{ marginBottom: '12px' }}>
                 <p className="settings-section-title">Profile</p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.35)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: resolvedTheme === 'light' ? '#FFFFFF' : 'rgba(0,0,0,0.35)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
                   <div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#F0F4FF' }}>{displayName} <span style={{ color: '#8896A7' }}>#{tag}</span></div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: resolvedTheme === 'light' ? '#1E4D32' : '#F0F4FF' }}>{displayName} <span style={{ color: '#8896A7' }}>#{tag}</span></div>
                   </div>
                   <button onClick={() => router.push('/change-name')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
                     Edit
@@ -145,9 +153,9 @@ export default function SettingsPage() {
 
               {/* Change Password row — local accounts only */}
               {authProvider === 'local' && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.35)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: resolvedTheme === 'light' ? '#FFFFFF' : 'rgba(0,0,0,0.35)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
                   <div>
-                    <div style={{ fontSize: '15px', fontWeight: 600, color: '#F0F4FF' }}>🔒 Change Password</div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: resolvedTheme === 'light' ? '#1E4D32' : '#F0F4FF' }}>🔒 Change Password</div>
                     <div style={{ fontSize: '12px', color: '#8896A7', marginTop: '2px' }}>Update your login password</div>
                   </div>
                   <button onClick={() => router.push('/change-password')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
@@ -156,6 +164,68 @@ export default function SettingsPage() {
                 </div>
               )}
               <br></br>
+
+              {/* ── Theme ── */}
+              <div className="settings-section" style={{ marginBottom: '12px' }}>
+                <p className="settings-section-title">Appearance</p>
+                <div style={{ display: 'flex', gap: '6px', background: resolvedTheme === 'light' ? '#FFFFFF' : 'rgba(0,0,0,0.18)', padding: '4px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  {[['system','☀︎ / 🌑 System'],['light','☀︎ Light'],['dark','🌑 Dark']].map(([val, label]) => {
+                    const isLightThemeIcon = val === 'system' || val === 'light';
+                    const isLightTextOnly = resolvedTheme === 'light' && val === 'light';
+                    const [icon, ...rest] = label.split(' ');
+                    const titleText = rest.join(' ');
+
+                    return (
+                      <button
+                        key={val}
+                        onClick={() => {
+                          setThemePref(val);
+                          saveTheme(val);
+                          applyTheme(val);
+                        }}
+                        className="ls-theme-option"
+                        style={{
+                          flex: 1,
+                          padding: '9px 6px',
+                          borderRadius: '11px',
+                          border: 'none',
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          background: themePref === val
+                            ? (resolvedTheme === 'light' ? '#D8F0E0' : 'rgba(255,255,255,0.10)')
+                            : 'transparent',
+                          color: themePref === val ? '#FFFFFF' : '#8896A7',
+                          boxShadow: themePref === val ? '0 1px 0 rgba(255,255,255,0.06) inset' : 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: themePref === val && (val === 'light' || val === 'system') && resolvedTheme === 'light'
+                              ? '#FFFFFF'
+                              : (isLightThemeIcon ? '#D8F0E0' : 'inherit'),
+                          }}
+                        >
+                          {icon}
+                        </span>
+                        {titleText.length > 0 && (
+                          <span style={{ color: themePref === val ? '#FFFFFF' : (isLightTextOnly ? '#8896A7' : 'inherit'), marginLeft: '6px' }}>{titleText}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="settings-note" style={{ marginTop: '8px' }}>Controls the colour theme across the entire app.</p>
+              </div>
 
               <div className="settings-section">
                 <p className="settings-section-title">Sound Levels</p>

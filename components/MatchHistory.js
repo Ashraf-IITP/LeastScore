@@ -1325,6 +1325,96 @@ const GLOBAL_CSS = `
     100% { opacity: 0.6; }
   }
 
+  /* ── Match History List ── */
+  .ls-match-box {
+    width: 100%;
+    text-align: left;
+    padding: 16px 20px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: transform 0.15s, background 0.2s, border-color 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ls-match-box:hover {
+    transform: translateY(-2px);
+  }
+  .ls-match-box.loss {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .ls-match-box.loss:hover {
+    background: rgba(255,255,255,0.05);
+  }
+  .ls-match-box.win {
+    background: rgba(255,200,87,0.05);
+    border: 1px solid rgba(255,200,87,0.3);
+  }
+  .ls-match-box.win:hover {
+    background: rgba(255,200,87,0.1);
+  }
+  .ls-match-mode {
+    color: #F0F4FF;
+    font-size: 15px;
+  }
+  .ls-match-meta {
+    font-size: 13px;
+    color: #8896A7;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .ls-match-placement {
+    color: #8896A7;
+    font-weight: 400;
+  }
+  .ls-match-placement.win {
+    color: #FFC857;
+    font-weight: 700;
+  }
+  .ls-match-score {
+    color: #A8B4C2;
+  }
+  .ls-match-score.win {
+    color: #FFC857;
+  }
+  .ls-match-players-box {
+    font-size: 12px;
+    color: #A8B4C2;
+    background: rgba(255,255,255,0.02);
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.04);
+    margin-top: 4px;
+  }
+  .ls-match-players-label {
+    opacity: 0.7;
+  }
+  .ls-match-players-list {
+    color: #F0F4FF;
+  }
+
+  /* ── Match Details View ── */
+  .ls-match-details-leaderboard-title, .ls-match-details-moves-title { color: #F0F4FF; }
+  .ls-match-details-date-time { color: #8896A7; }
+  .ls-match-details-player-name { color: #F0F4FF; margin: 0; font-size: 15px; font-weight: 600; }
+  .ls-match-details-player-score-default { color: #F0F4FF; }
+  .ls-match-details-player-score-gold { color: #FFC857; }
+  .ls-match-details-player-score-silver { color: #cbd5e1; }
+  .ls-match-details-player-score-bronze { color: #d97706; }
+  .ls-match-details-player-row-default { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
+  .ls-match-details-player-row-gold { background: rgba(255,200,87,0.1); border: 1px solid rgba(255,200,87,0.3); }
+  .ls-match-details-player-row-silver { background: rgba(203,213,225,0.1); border: 1px solid rgba(203,213,225,0.3); }
+  .ls-match-details-player-row-bronze { background: rgba(217,119,6,0.1); border: 1px solid rgba(217,119,6,0.3); }
+  .ls-match-details-move-text-primary { color: #F0F4FF; }
+  .ls-match-details-move-text-secondary { color: #A8B4C2; }
+  .ls-match-details-move-text-muted { color: #8896A7; }
+  .ls-match-details-move-default { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); }
+  .ls-match-details-move-expanded { background: rgba(58,77,255,0.08); border: 1px solid rgba(255,255,255,0.06); }
+  .ls-match-details-move-num-default { color: #A8B4C2; }
+  .ls-match-details-move-num-expanded { color: #7B8FFF; }
+
   /* Spacing utils */
   .mt-2 { margin-top: 8px; }
   .mt-3 { margin-top: 12px; }
@@ -1419,14 +1509,14 @@ function nameAt(participants, seat) {
 function MoveSummary({ move, participants }) {
   switch (move.eventType) {
     case 'deal':
-      return <span style={{ color: '#F0F4FF' }}>{move.payload?.label || 'New deal'}</span>;
+      return <span className="ls-match-details-move-text-primary">{move.payload?.label || 'New deal'}</span>;
     case 'turn': {
       const actor = nameAt(participants, move.actingPlayer);
       const fromDeck = move.payload?.drawFrom === 'deck';
       const drawn = move.payload?.drawnCard;
       const discards = move.payload?.discardCards || [];
       return (
-        <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', color: '#A8B4C2' }}>
+        <span className="ls-match-details-move-text-secondary" style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
           <strong style={{ color: '#FFC857' }}>{actor}</strong>
           <span>drew from {fromDeck ? 'deck' : 'visible'}</span>
           {fromDeck ? <HiddenDeckChip /> : drawn ? <MiniCard card={drawn} /> : null}
@@ -1460,29 +1550,30 @@ function MoveSummary({ move, participants }) {
       );
     case 'disconnect':
       return (
-        <span style={{ color: '#8896A7' }}>
+        <span className="ls-match-details-move-text-muted">
           <strong style={{ color: '#FFC857' }}>{nameAt(participants, move.actingPlayer)}</strong> disconnected
         </span>
       );
     case 'poll_start':
-      return <span style={{ color: '#F0F4FF' }}>Elimination vote started for <strong style={{ color: '#FFC857' }}>{nameAt(participants, move.actingPlayer)}</strong></span>;
+      return <span className="ls-match-details-move-text-primary">Elimination vote started for <strong style={{ color: '#FFC857' }}>{nameAt(participants, move.actingPlayer)}</strong></span>;
     case 'bots_only_end':
-      return <span style={{ color: '#8896A7' }}>{move.payload?.message || 'Match ended — only bots remained'}</span>;
+      return <span className="ls-match-details-move-text-muted">{move.payload?.message || 'Match ended — only bots remained'}</span>;
     case 'game_end': {
       const winner = move.payload?.winner;
       if (typeof winner === 'number') {
         return <span style={{ color: '#4ade80' }}>Match ended — winner: <strong style={{ color: '#FFC857' }}>{nameAt(participants, winner)}</strong></span>;
       }
-      return <span style={{ color: '#A8B4C2' }}>Match ended</span>;
+      return <span className="ls-match-details-move-text-secondary">Match ended</span>;
     }
     default:
-      return <span style={{ color: '#F0F4FF' }}>{move.eventType}</span>;
+      return <span className="ls-match-details-move-text-primary">{move.eventType}</span>;
   }
 }
 
 function LastActionRow({ label, children, bordered = false }) {
   return (
     <div
+      className={bordered ? "ls-match-details-expanded-divider-left" : ""}
       style={{
         flex: 1,
         textAlign: 'center',
@@ -1490,6 +1581,7 @@ function LastActionRow({ label, children, bordered = false }) {
       }}
     >
       <div
+        className="ls-match-details-expanded-text"
         style={{
           fontSize: '9px',
           color: '#8896A7',
@@ -1512,6 +1604,7 @@ function PlayerHandsPanel({ state }) {
       {state.players.map((p) => (
         <div
           key={p.seatIndex}
+          className="ls-match-details-expanded-section ls-match-details-expanded-border"
           style={{
             marginBottom: '12px',
             padding: '12px',
@@ -1520,12 +1613,12 @@ function PlayerHandsPanel({ state }) {
             border: '1px solid rgba(255,255,255,0.06)',
           }}
         >
-          <strong style={{ color: '#F0F4FF' }}>
+          <strong className="ls-match-details-expanded-player-name" style={{ color: '#F0F4FF' }}>
             {p.username}
             {p.isBot ? ' (Bot)' : ''}
             {p.eliminated ? ' — eliminated' : ''}
           </strong>
-          <div style={{ fontSize: '13px', color: '#8896A7', marginTop: '4px' }}>
+          <div className="ls-match-details-expanded-text" style={{ fontSize: '13px', color: '#8896A7', marginTop: '4px' }}>
             Score: <strong style={{ color: '#FFC857' }}>{p.score}</strong>
             {typeof state.currentPlayer === 'number' && state.currentPlayer === p.seatIndex && !p.eliminated
               ? ' · Current turn'
@@ -1534,6 +1627,7 @@ function PlayerHandsPanel({ state }) {
           </div>
 
           <div
+            className="ls-match-details-expanded-divider-top"
             style={{
               marginTop: '10px',
               paddingTop: '8px',
@@ -1552,6 +1646,7 @@ function PlayerHandsPanel({ state }) {
 
           <div style={{ marginTop: '12px' }}>
             <div
+              className="ls-match-details-expanded-text"
               style={{
                 fontSize: '9px',
                 color: '#8896A7',
@@ -1568,6 +1663,7 @@ function PlayerHandsPanel({ state }) {
       ))}
 
       <div
+        className="ls-match-details-expanded-section ls-match-details-expanded-border"
         style={{
           marginTop: '8px',
           padding: '12px',
@@ -1577,6 +1673,7 @@ function PlayerHandsPanel({ state }) {
         }}
       >
         <div
+          className="ls-match-details-expanded-text"
           style={{
             fontSize: '9px',
             color: '#8896A7',
@@ -1588,8 +1685,9 @@ function PlayerHandsPanel({ state }) {
           Visible pile
         </div>
         <MiniCardRow cards={state.visibleCard} emptyLabel="—" />
-        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="ls-match-details-expanded-divider-top" style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
           <div
+            className="ls-match-details-expanded-text"
             style={{
               fontSize: '9px',
               color: '#8896A7',
@@ -1610,12 +1708,12 @@ function PlayerHandsPanel({ state }) {
 function RoundSummaryPanel({ summary }) {
   if (!summary?.players) return null;
   return (
-    <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(255,200,87,0.05)', borderRadius: '12px', border: '1px solid rgba(255,200,87,0.2)' }}>
+    <div className="ls-match-details-expanded-section ls-match-details-expanded-border" style={{ marginTop: '16px', padding: '12px', background: 'rgba(255,200,87,0.05)', borderRadius: '12px', border: '1px solid rgba(255,200,87,0.2)' }}>
       <strong style={{ color: '#FFC857' }}>Round summary</strong>
       <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {summary.players.map((p, idx) => (
           <div key={idx}>
-            <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: '#F0F4FF' }}>
+            <div className="ls-match-details-expanded-text" style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: '#F0F4FF' }}>
               {p.username}
               {Number.isFinite(p.sum) ? ` · hand sum ${p.sum === Infinity ? '—' : p.sum}` : ''}
             </div>
@@ -1743,7 +1841,7 @@ export default function MatchHistory({ onBack }) {
           <h2 className="ls-section-title" style={{ fontSize: '20px', marginBottom: '4px' }}>
             {MODE_LABELS[detail.mode] || detail.mode}
           </h2>
-          <p style={{ color: '#8896A7', fontSize: '13px', marginBottom: '24px' }}>
+          <p className="ls-match-details-date-time" style={{ fontSize: '13px', marginBottom: '24px' }}>
             {formatDate(detail.startedAt)}
             {detail.endedAt ? ` → ${formatDate(detail.endedAt)}` : ' (in progress)'}
             {detail.endReason ? ` · End: ${detail.endReason}` : ''}
@@ -1751,7 +1849,7 @@ export default function MatchHistory({ onBack }) {
 
           <div style={{ marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <strong style={{ color: '#F0F4FF', fontSize: '16px' }}>Leaderboard</strong>
+              <strong className="ls-match-details-leaderboard-title" style={{ fontSize: '16px' }}>Leaderboard</strong>
               <button 
                 type="button" 
                 onClick={() => setLeaderboardExpanded(!leaderboardExpanded)} 
@@ -1765,37 +1863,33 @@ export default function MatchHistory({ onBack }) {
                 {rankedPlayers.map((player, index) => {
                     const total = rankedPlayers.length;
                     const cls = rankClass(index, total);
-                    let bg = 'rgba(255,255,255,0.03)';
-                    let border = '1px solid rgba(255,255,255,0.06)';
-                    let scoreColor = '#F0F4FF';
+                    let scoreClass = 'ls-match-details-player-score-default';
+                    let rowClass = 'ls-match-details-player-row-default';
                     
                     if (cls === 'gold') {
-                      bg = 'rgba(255,200,87,0.1)';
-                      border = '1px solid rgba(255,200,87,0.3)';
-                      scoreColor = '#FFC857';
+                      rowClass = 'ls-match-details-player-row-gold';
+                      scoreClass = 'ls-match-details-player-score-gold';
                     } else if (cls === 'silver') {
-                      bg = 'rgba(203,213,225,0.1)';
-                      border = '1px solid rgba(203,213,225,0.3)';
-                      scoreColor = '#cbd5e1';
+                      rowClass = 'ls-match-details-player-row-silver';
+                      scoreClass = 'ls-match-details-player-score-silver';
                     } else if (cls === 'bronze') {
-                      bg = 'rgba(217,119,6,0.1)';
-                      border = '1px solid rgba(217,119,6,0.3)';
-                      scoreColor = '#d97706';
+                      rowClass = 'ls-match-details-player-row-bronze';
+                      scoreClass = 'ls-match-details-player-score-bronze';
                     }
 
                     return (
-                        <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: '16px', background: bg, border: border }}>
+                        <div key={index} className={rowClass} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: '16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <span style={{ fontSize: '22px', minWidth: '28px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{medal(index, total)}</span>
                                 <div>
-                                    <p style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#F0F4FF' }}>{player.username}</p>
+                                    <p className="ls-match-details-player-name">{player.username}</p>
                                     <div style={{ display: 'flex', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
                                         {player.isBot && <span className="ls-badge" style={{ background: 'rgba(255,255,255,0.1)', color: '#A8B4C2', border: '1px solid rgba(255,255,255,0.15)' }}>Bot</span>}
                                         {player.placement && <span className="ls-badge blue">Placement: #{player.placement}</span>}
                                     </div>
                                 </div>
                             </div>
-                            <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '26px', color: scoreColor, letterSpacing: '1px' }}>
+                            <span className={scoreClass} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '26px', letterSpacing: '1px' }}>
                                 {player.finalScore != null ? player.finalScore : ''}
                             </span>
                         </div>
@@ -1805,17 +1899,16 @@ export default function MatchHistory({ onBack }) {
             )}
           </div>
 
-          <strong style={{ color: '#F0F4FF', fontSize: '16px', display: 'block', marginBottom: '12px' }}>Moves ({detail.moves.length})</strong>
+          <strong className="ls-match-details-moves-title" style={{ fontSize: '16px', display: 'block', marginBottom: '12px' }}>Moves ({detail.moves.length})</strong>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {detail.moves.map((move) => (
               <div
                 key={move.moveNumber}
+                className={expandedMove === move.moveNumber ? 'ls-match-details-move-expanded' : 'ls-match-details-move-default'}
                 style={{
-                  border: '1px solid rgba(255,255,255,0.06)',
                   borderRadius: '12px',
                   overflow: 'hidden',
-                  background: expandedMove === move.moveNumber ? 'rgba(58,77,255,0.08)' : 'rgba(255,255,255,0.02)',
-                  transition: 'background 0.2s',
+                  transition: 'background 0.2s, border-color 0.2s',
                 }}
               >
                 <button
@@ -1833,12 +1926,12 @@ export default function MatchHistory({ onBack }) {
                   }}
                 >
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
-                    <strong style={{ color: expandedMove === move.moveNumber ? '#7B8FFF' : '#A8B4C2' }}>#{move.moveNumber}</strong>
+                    <strong className={expandedMove === move.moveNumber ? 'ls-match-details-move-num-expanded' : 'ls-match-details-move-num-default'}>#{move.moveNumber}</strong>
                     <MoveSummary move={move} participants={detail.participants} />
                   </div>
                 </button>
                 {expandedMove === move.moveNumber && move.payload?.state && (
-                  <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="ls-match-details-expanded-divider-top" style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                     <PlayerHandsPanel state={move.payload.state} />
                     <RoundSummaryPanel summary={move.payload.roundSummary} />
                   </div>
@@ -1859,7 +1952,7 @@ export default function MatchHistory({ onBack }) {
           ← Main menu
         </button>
         <h2 className="ls-section-title">Match History</h2>
-        <p className="ls-section-desc">
+        <p className="ls-section-desc ls-match-history-desc">
           Review every move from your online, friends, and AI matches. Pass and Play, Play Along, and Tutorial games are not recorded.
         </p>
         
@@ -1886,47 +1979,29 @@ export default function MatchHistory({ onBack }) {
                 isWin = (m.playerCount > 3 && m.myPlacement <= 3) || (m.playerCount <= 3 && m.myPlacement === 1);
                 isLoss = !isWin;
               }
-              const bg = isWin ? 'rgba(255,200,87,0.05)' : 'rgba(255,255,255,0.02)';
-              const border = isWin ? '1px solid rgba(255,200,87,0.3)' : '1px solid rgba(255,255,255,0.05)';
-              const hoverBg = isWin ? 'rgba(255,200,87,0.1)' : 'rgba(255,255,255,0.05)';
-
               return (
               <button
                 key={m.id}
                 type="button"
                 onClick={() => setSelectedId(m.id)}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '16px 20px',
-                  border: border,
-                  borderRadius: '16px',
-                  background: bg,
-                  cursor: 'pointer',
-                  transition: 'transform 0.15s, background 0.2s',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px'
-                }}
-                onMouseOver={(e) => { e.currentTarget.style.background = hoverBg; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                onMouseOut={(e) => { e.currentTarget.style.background = bg; e.currentTarget.style.transform = 'none'; }}
+                className={`ls-match-box ${isWin ? 'win' : 'loss'}`}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong style={{ color: '#F0F4FF', fontSize: '15px' }}>
+                  <strong className="ls-match-mode">
                     {MODE_LABELS[m.mode] || m.mode}
                   </strong>
                   <span className="ls-badge blue">{m.playerCount} Players</span>
                 </div>
                 
-                <div style={{ fontSize: '13px', color: '#8896A7', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <div className="ls-match-meta">
                   <span>{formatDate(m.startedAt)}</span>
-                  {m.myPlacement && <span style={{ color: isWin ? '#FFC857' : '#8896A7', fontWeight: isWin ? 700 : 400 }}>· Placement: #{m.myPlacement} {isWin ? '🏆 Win' : ''}</span>}
-                  {m.myScore != null && <span style={{ color: isWin ? '#FFC857' : '#A8B4C2' }}>· Score: {m.myScore}</span>}
+                  {m.myPlacement && <span className={`ls-match-placement ${isWin ? 'win' : ''}`}>· Placement: #{m.myPlacement} {isWin ? '🏆 Win' : ''}</span>}
+                  {m.myScore != null && <span className={`ls-match-score ${isWin ? 'win' : ''}`}>· Score: {m.myScore}</span>}
                   {m.endReason === 'bots_only' && <span>· Ended (bots only)</span>}
                 </div>
                 
-                <div style={{ fontSize: '12px', color: '#A8B4C2', background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)', marginTop: '4px' }}>
-                  <span style={{ opacity: 0.7 }}>Players:</span> <span style={{ color: '#F0F4FF' }}>{m.participants.map((p) => p.username).join(', ')}</span>
+                <div className="ls-match-players-box">
+                  <span className="ls-match-players-label">Players:</span> <span className="ls-match-players-list">{m.participants.map((p) => p.username).join(', ')}</span>
                 </div>
               </button>
             );

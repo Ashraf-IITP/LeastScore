@@ -833,6 +833,24 @@ export default function Login() {
           from { transform: scale(0.5); opacity: 0; }
           to   { transform: scale(1); opacity: 1; }
         }
+
+        /* ── Light theme overrides ── */
+        [data-theme="light"] .divider .text {
+          color: #1E4D32;
+        }
+        [data-theme="light"] .divider .line {
+          background: rgba(30,77,50,0.24);
+        }
+        [data-theme="light"] .btn-gold {
+          background: linear-gradient(135deg, #E0AD18 0%, #A0700A 100%);
+          color: #FFFBE8;
+          box-shadow: 0 4px 16px rgba(160,112,10,0.48);
+          text-shadow: 0 1px 2px rgba(100,65,0,0.35);
+        }
+        [data-theme="light"] .btn-gold:hover:not(:disabled) {
+          background: linear-gradient(135deg, #F0C832 0%, #C8960A 100%);
+          box-shadow: 0 8px 24px rgba(160,112,10,0.55);
+        }
       `}</style>
 
       <div className="mobile-app-container">
@@ -903,7 +921,7 @@ export default function Login() {
                         <span className="line" />
                       </div>
 
-                      <button className="btn-secondary" onClick={() => changeView('guest')} disabled={loading}>
+                      <button className="btn-gold" onClick={() => changeView('guest')} disabled={loading}>
                         <span>👤</span> Play as Guest
                       </button>
 
@@ -925,7 +943,7 @@ export default function Login() {
                   <p className="view-desc">
                     Play without an account. A random username and tag will be assigned automatically.
                   </p>
-                  <button className="btn-primary mt-4" onClick={handleGuest} disabled={loading}>
+                  <button className="btn-gold mt-4" onClick={handleGuest} disabled={loading}>
                     {loading ? 'Joining…' : 'Play as Guest 🎮'}
                   </button>
                 </div>
@@ -939,7 +957,7 @@ export default function Login() {
                   <p className="view-desc">Log in with your username and password.</p>
                   <Field label="Username (Name#ID)" value={loginUser} onChange={setLoginUser} placeholder="e.g. Altius#AB12" autoComplete="username" />
                   <Field label="Password" type="password" value={loginPass} onChange={setLoginPass} placeholder="Your password" autoComplete="current-password" />
-                  <button className="btn-primary mt-4" onClick={handleLogin} disabled={loading || !loginUser || !loginPass}>
+                  <button className="btn-gold mt-4" onClick={handleLogin} disabled={loading || !loginUser || !loginPass}>
                     {loading ? 'Logging in…' : 'Log In'}
                   </button>
                   <div className="footer-links">

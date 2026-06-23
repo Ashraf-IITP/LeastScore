@@ -14,6 +14,7 @@ export function MiniCard({ card }) {
   if (!card || card.hidden) return null;
   return (
     <span
+      className={`ls-minicard ${isRedSuit(card.suit) ? 'ls-minicard-red' : 'ls-minicard-black'}`}
       style={{
         fontSize: '11px',
         padding: '2px 5px',

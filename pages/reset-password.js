@@ -367,6 +367,86 @@ export default function ResetPasswordPage() {
           animation: spin 0.85s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* ── Light Theme Overrides ── */
+        [data-theme="light"] body,
+        [data-theme="light"] .rp-container { background: #0F2318; }
+        [data-theme="light"] .rp-frame {
+          background:
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M13 18 C13 15 11 13 8.5 13 C6 13 4 15.5 4 18 C4 21 8.5 26 13 30 C17.5 26 22 21 22 18 C22 15.5 20 13 17.5 13 C15 13 13 15 13 18 Z' fill='%23000' opacity='0.13'/%3E%3Cpath d='M53 10 C53 10 44 17 44 22 C44 25 46.5 27 49.5 26.5 C48 28.5 47 30 47 30 L59 30 C59 30 58 28.5 56.5 26.5 C59.5 27 62 25 62 22 C62 17 53 10 53 10 Z' fill='%23000' opacity='0.13'/%3E%3Ccircle cx='13' cy='55' r='4.5' fill='%23000' opacity='0.13'/%3E%3Ccircle cx='18.5' cy='62' r='4.5' fill='%23000' opacity='0.13'/%3E%3Ccircle cx='7.5' cy='62' r='4.5' fill='%23000' opacity='0.13'/%3E%3Crect x='11' y='63' width='4' height='6' rx='1' fill='%23000' opacity='0.13'/%3E%3Cpath d='M53 50 L60 60 L53 70 L46 60 Z' fill='%23000' opacity='0.13'/%3E%3C/svg%3E") repeat,
+            radial-gradient(ellipse 110% 55% at 50% 0%,   #2E7D4F 0%, transparent 60%),
+            radial-gradient(ellipse 80%  50% at 100% 40%,  #1B5C38 0%, transparent 55%),
+            radial-gradient(ellipse 70%  45% at 0%   70%,  #163E28 0%, transparent 55%),
+            radial-gradient(ellipse 90%  60% at 50% 100%,  #0D2B1A 0%, transparent 70%),
+            linear-gradient(175deg, #1E4D32 0%, #142D1E 40%, #0F2318 100%);
+        }
+        [data-theme="light"] .rp-bg-mesh {
+          background:
+            radial-gradient(ellipse 65% 45% at 95% 5%,  rgba(214,59,59,0.10) 0%, transparent 60%),
+            radial-gradient(ellipse 55% 40% at 5%  95%, rgba(93,201,138,0.10) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 35% at 80% 85%, rgba(46,125,82,0.18)  0%, transparent 50%),
+            radial-gradient(ellipse 60% 40% at 20% 20%, rgba(30,77,50,0.22)   0%, transparent 55%);
+        }
+        [data-theme="light"] .rp-title { color: #D8F0E0; }
+        [data-theme="light"] .rp-subtitle { color: #ffc439; }
+        [data-theme="light"] .rp-user-badge {
+          background: linear-gradient(135deg, rgba(200,150,10,0.18), rgba(248,224,112,0.12));
+          border-color: rgba(255,204,65,0.4);
+          color: #ffc439;
+          text-shadow: 0 1px 2px rgba(200,150,10,0.15);
+        }
+        [data-theme="light"] .rp-warning {
+          background: rgba(245,158,11,0.10);
+          border-color: rgba(245,158,11,0.30);
+        }
+        [data-theme="light"] .rp-warning-text { color: #A0700A; font-weight: 600; }
+        [data-theme="light"] .rp-card {
+          background: linear-gradient(160deg, #D8F0E0 0%, #E4F5EA 100%);
+          border: 1px solid rgba(13,33,24,0.10);
+          box-shadow: 0 1px 0 rgba(255,255,255,1.0) inset, 0 -1px 0 rgba(13,33,24,0.06) inset, 0 16px 40px rgba(0,0,0,0.24);
+        }
+        [data-theme="light"] .rp-back { color: #D8F0E0; text-shadow: none; }
+        [data-theme="light"] .rp-back:hover { color: #FFFFFF; text-shadow: none; }
+        [data-theme="light"] .rp-input-group label { color: #5A8C72; }
+        [data-theme="light"] .rp-input-wrap input {
+          background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+          border: 1px solid rgba(13,33,24,0.12);
+          color: #0D2118;
+        }
+        [data-theme="light"] .rp-input-wrap input:focus {
+          border-color: rgba(58,158,104,0.70);
+          box-shadow: 0 0 0 3px rgba(58,158,104,0.14);
+          background: linear-gradient(160deg, #F2FBF5, #FEFFFD);
+        }
+        [data-theme="light"] .rp-input-wrap input::placeholder { color: #8ABEA4; }
+        [data-theme="light"] .rp-eye-btn { color: #5A8C72; }
+        [data-theme="light"] .rp-eye-btn:hover { color: #0D2118; }
+        [data-theme="light"] .rp-btn {
+          background: linear-gradient(135deg, #E0AD18 0%, #A0700A 100%);
+          color: #FFFBE8;
+          box-shadow: 0 4px 16px rgba(160,112,10,0.48);
+          text-shadow: 0 1px 2px rgba(100,65,0,0.35);
+        }
+        [data-theme="light"] .rp-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #F0C832 0%, #C8960A 100%);
+          box-shadow: 0 8px 24px rgba(160,112,10,0.55);
+        }
+        [data-theme="light"] .rp-btn:disabled {
+          background: linear-gradient(160deg, #C8DED2, #B8D0C4);
+          color: #8ABEA4;
+          box-shadow: none;
+        }
+        [data-theme="light"] .rp-spinner {
+          border: 2.5px solid rgba(30,77,48,0.14);
+          border-top-color: #3A9E68;
+          border-right-color: #E0AD18;
+        }
+        [data-theme="light"] .rp-strength-bar { background: rgba(13,33,24,0.08); }
+        [data-theme="light"] .rp-alert-error {
+          background: rgba(214,59,59,0.09);
+          border: 1px solid rgba(214,59,59,0.26);
+          color: #B82E2E;
+        }
       `}</style>
 
       <div className="rp-container">

@@ -1434,14 +1434,14 @@ export default function Rules() {
       {socialOverlay}
       <PageShell>
       <LogoHeader subtitle="Game Rules" />
-      <div className="ls-card view-animate" style={{ padding: '30px' }}>
+      <div className="ls-card view-animate ls-rules-container" style={{ padding: '30px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <button className="btn-back" style={{ margin: 0 }} onClick={() => router.push('/?mode=tutorial')}>← Back</button>
           <h2 className="ls-section-title" style={{ margin: 0, fontSize: '24px' }}>Least Score Rules</h2>
           <div style={{ width: '60px' }}></div>
         </div>
 
-        <p style={{ fontSize: '15px', fontStyle: 'italic', color: '#FFC857', fontWeight: '600', marginBottom: '20px', background: 'rgba(255,200,87,0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,200,87,0.2)' }}>
+        <p className="ls-rules-quote" style={{ fontSize: '15px', fontStyle: 'italic', color: '#FFC857', fontWeight: '600', marginBottom: '20px', background: 'rgba(255,200,87,0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,200,87,0.2)' }}>
           "The player with the lowest score wins, while other players gain points toward elimination"
         </p>
 
@@ -1449,20 +1449,20 @@ export default function Rules() {
           Your goal is to keep the lowest possible sum of cards in hand and declare when you think your score is the lowest among all players.
         </p>
 
-        <div className="ls-divider"><span className="line" /><span className="text">ON EVERY TURN</span><span className="line" /></div>
+        <div className="ls-divider ls-rules-divider"><span className="line" /><span className="text">ON EVERY TURN</span><span className="line" /></div>
         <div style={{ display: 'flex', gap: '20px', marginBottom: '24px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '200px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="ls-rules-box" style={{ flex: 1, minWidth: '200px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
             <h3 style={{ color: '#FFD166', fontSize: '16px', marginTop: 0, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ background: 'rgba(255,209,102,0.2)', padding: '4px 8px', borderRadius: '8px' }}>1</span> Discard
+              <span className="ls-rules-badge" style={{ background: 'rgba(255,209,102,0.2)', padding: '4px 8px', borderRadius: '8px' }}>1</span> Discard
             </h3>
             <ul style={{ color: '#A8B4C2', fontSize: '14px', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
               <li>Either a <strong style={{ color: '#F0F4FF' }}>single card</strong>, or</li>
               <li>A <strong style={{ color: '#F0F4FF' }}>valid combination</strong></li>
             </ul>
           </div>
-          <div style={{ flex: 1, minWidth: '200px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="ls-rules-box" style={{ flex: 1, minWidth: '200px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
             <h3 style={{ color: '#4ade80', fontSize: '16px', marginTop: 0, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ background: 'rgba(74,222,128,0.2)', padding: '4px 8px', borderRadius: '8px' }}>2</span> Draw
+              <span className="ls-rules-badge" style={{ background: 'rgba(74,222,128,0.2)', padding: '4px 8px', borderRadius: '8px' }}>2</span> Draw
             </h3>
             <ul style={{ color: '#A8B4C2', fontSize: '14px', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
               <li>From the <strong style={{ color: '#F0F4FF' }}>Visible Deck</strong> (card discarded by the previous player), or</li>
@@ -1471,8 +1471,8 @@ export default function Rules() {
           </div>
         </div>
 
-        <div className="ls-divider"><span className="line" /><span className="text">VALID COMBINATIONS</span><span className="line" /></div>
-        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
+        <div className="ls-divider ls-rules-divider"><span className="line" /><span className="text">VALID COMBINATIONS</span><span className="line" /></div>
+        <div className="ls-rules-box" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
           <ul style={{ color: '#F0F4FF', fontSize: '14px', lineHeight: '1.8', paddingLeft: '20px', margin: 0 }}>
             <li style={{ marginBottom: '8px' }}><strong style={{ color: '#FFC857' }}>Pair:</strong> 2 cards of the same rank <span style={{ color: '#8896A7' }}>(e.g. two 9s of different suits)</span></li>
             <li style={{ marginBottom: '8px' }}><strong style={{ color: '#FFC857' }}>Sequence of 3:</strong> 3 consecutive cards irrespective of suit <span style={{ color: '#8896A7' }}>(e.g. 4-5-6, A-2-3, Q-K-A)</span></li>
@@ -1482,16 +1482,16 @@ export default function Rules() {
           </ul>
         </div>
 
-        <div className="ls-divider"><span className="line" /><span className="text">SCORING & ELIMINATION</span><span className="line" /></div>
+        <div className="ls-divider ls-rules-divider"><span className="line" /><span className="text">SCORING & ELIMINATION</span><span className="line" /></div>
         <p style={{ color: '#A8B4C2', fontSize: '14px', marginBottom: '16px', textAlign: 'center' }}>The player with the higher score loses points toward elimination.</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-          <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', padding: '16px', borderRadius: '16px' }}>
+          <div className="ls-rules-highlight-success" style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.25)', padding: '16px', borderRadius: '16px' }}>
             <h4 style={{ margin: '0 0 8px', color: '#6EE7B7', fontSize: '15px' }}>Correct Declaration ✓</h4>
             <p style={{ margin: '0 0 8px', color: '#F0F4FF', fontSize: '14px' }}>If your score is the lowest among all players:</p>
             <p style={{ margin: 0, color: '#A8B4C2', fontSize: '13px' }}>Every other player gains: <strong style={{ color: '#6EE7B7' }}>(their score - your score)</strong></p>
           </div>
-          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', padding: '16px', borderRadius: '16px' }}>
+          <div className="ls-rules-highlight-danger" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', padding: '16px', borderRadius: '16px' }}>
             <h4 style={{ margin: '0 0 8px', color: '#FC8181', fontSize: '15px' }}>Wrong Declaration ✕</h4>
             <p style={{ margin: '0 0 8px', color: '#F0F4FF', fontSize: '14px' }}>If another player has a lower score than you:</p>
             <p style={{ margin: 0, color: '#A8B4C2', fontSize: '13px' }}>You gain: <strong style={{ color: '#FC8181' }}>20 + (your score - lowest player's score)</strong></p>

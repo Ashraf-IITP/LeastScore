@@ -172,10 +172,9 @@ export function PlayAlongHintReasoningPanel({ reasoning, onDismiss }) {
 
 /** Card styles matching Observe a Game (ScriptedMatch) glows */
 export function playAlongCardStyle(card, { discardGlow = false, drawnGlow = false, selected = false, highlight = false } = {}) {
-  const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
-  let boxShadow = '0 2px 8px rgba(0,0,0,0.25)';
-  let background = '#ffffff';
-  let border = '1px solid rgba(255,255,255,0.12)';
+  let boxShadow = undefined;
+  let background = undefined;
+  let border = undefined;
 
   if (selected === 'discard' || selected === true || discardGlow) {
     border = '2px solid #e53935';
@@ -187,27 +186,12 @@ export function playAlongCardStyle(card, { discardGlow = false, drawnGlow = fals
     boxShadow = '0 0 12px 4px rgba(255, 152, 0, 0.7)';
   }
 
-  return {
-    cursor: 'pointer',
-    margin: '5px',
-    padding: '8px 6px 20px',
-    minWidth: '54px',
-    minHeight: '90px',
-    borderRadius: '12px',
-    border,
-    background,
-    boxShadow,
-    color: isRed ? '#c11' : '#111',
-    display: 'inline-flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontSize: '15px',
-    fontWeight: 700,
-    fontFamily: "'DM Sans', sans-serif",
-    transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
-    transform: selected ? 'translateY(-4px)' : 'none',
-  };
+  const style = {};
+  if (border) style.border = border;
+  if (background) style.background = background;
+  if (boxShadow) style.boxShadow = boxShadow;
+
+  return style;
 }
 
 export function formatHandSumLabel(sum) {

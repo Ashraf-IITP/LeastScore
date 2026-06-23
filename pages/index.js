@@ -631,14 +631,16 @@ const GLOBAL_CSS = `
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255,200,87,0.08);
-    border: 1px solid rgba(255,200,87,0.15);
+    background: linear-gradient(135deg, rgba(200,150,10,0.18), rgba(248,224,112,0.12));
+    border: 1px solid rgba(255,204,65,0.4);
     border-radius: 10px;
     padding: 6px 12px;
     margin-bottom: 16px;
+    color: #ffc439 !important;
+    text-shadow: 0 1px 2px rgba(200,150,10,0.15) !important;
   }
-  .ls-user-chip span { color: #8896A7; font-size: 12px; }
-  .ls-user-chip strong { color: #FFC857; font-size: 13px; }
+  .ls-user-chip span { color: #ffc439 !important; font-size: 12px; }
+  .ls-user-chip strong { color: #ffc439 !important; font-size: 13px; }
 
   /* ── Mode cards (image-backed 21:9) ── */
    .ls-mode-card {
@@ -1238,6 +1240,19 @@ const GLOBAL_CSS = `
   .ls-rank-row.silver { background: rgba(192,192,192,0.07); border-color: rgba(192,192,192,0.2); }
   .ls-rank-row.bronze { background: rgba(205,127,50,0.07); border-color: rgba(205,127,50,0.2); }
   .ls-rank-row.default { background: rgba(255,255,255,0.025); }
+
+  /* ── Match Details View (for Final Leaderboard) ── */
+  .ls-match-details-leaderboard-title, .ls-match-details-moves-title { color: #F0F4FF; }
+  .ls-match-details-date-time { color: #8896A7; }
+  .ls-match-details-player-name { color: #F0F4FF; margin: 0; font-size: 15px; font-weight: 600; }
+  .ls-match-details-player-score-default { color: #F0F4FF; }
+  .ls-match-details-player-score-gold { color: #FFC857; }
+  .ls-match-details-player-score-silver { color: #cbd5e1; }
+  .ls-match-details-player-score-bronze { color: #d97706; }
+  .ls-match-details-player-row-default { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
+  .ls-match-details-player-row-gold { background: rgba(255,200,87,0.1); border: 1px solid rgba(255,200,87,0.3); }
+  .ls-match-details-player-row-silver { background: rgba(203,213,225,0.1); border: 1px solid rgba(203,213,225,0.3); }
+  .ls-match-details-player-row-bronze { background: rgba(217,119,6,0.1); border: 1px solid rgba(217,119,6,0.3); }
 
   /* ── Round history table ── */
   .ls-round-table {
@@ -1945,7 +1960,7 @@ const GLOBAL_CSS = `
     width: 100%;
     height: 100%;
     border-radius: 12px;
-    border: 1px solid #0020B0;
+    border: 1px solid rgba(255, 200, 87, 0.4);
     overflow: hidden;
     pointer-events: none;
     transition: opacity 0.3s ease;
@@ -1969,7 +1984,7 @@ const GLOBAL_CSS = `
     min-width: var(--card-w);
     min-height: var(--card-h);
     border-radius: 12px;
-    border: 1px solid #0020B0;
+    border: 1px solid rgba(255, 200, 87, 0.4);
     background: #ffffff;
     color: #111;
     display: inline-flex;
@@ -2044,21 +2059,7 @@ const GLOBAL_CSS = `
     position: relative;
     overflow: hidden;
   }
-  .ls-action-btn.make-turn {
-    background: linear-gradient(135deg, #3A4DFF, #2D3DE6);
-    color: #fff;
-    box-shadow: 0 4px 16px rgba(58,77,255,0.35);
-  }
-  .ls-action-btn.make-turn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(58,77,255,0.5); }
-  .ls-action-btn.make-turn:disabled { background: rgba(255,255,255,0.04); color: #8896A7; box-shadow: none; cursor: not-allowed; }
-  .ls-action-btn.declare {
-    background: linear-gradient(135deg, #FFD166, #FFC857);
-    color: #1A1200;
-    box-shadow: 0 4px 16px rgba(255,200,87,0.3);
-  }
-  .ls-action-btn.turn-shine::before {
-    content: '';
-    position: absolute;
+  .ls-action-btn.olute;
     top: 0; left: -130%;
     width: 55%;
     height: 100%;
@@ -2198,6 +2199,12 @@ const GLOBAL_CSS = `
     color: #FFC857;
     box-shadow: 0 0 20px rgba(255,200,87,0.15), 0 4px 12px rgba(0,0,0,0.3);
     transform: translateY(-1px);
+  }
+  .ls-toolbar-btn.settings:hover {
+    background: rgba(255,200,87,0.14);
+    border-color: rgba(255,200,87,0.30);
+    color: #FFC857;
+    box-shadow: 0 0 20px rgba(255,200,87,0.15), 0 4px 12px rgba(0,0,0,0.3);
   }
   .ls-toolbar-btn:active {
     transform: scale(0.92);
@@ -2633,6 +2640,10 @@ export default function Home() {
             // If user is currently playing a game and they swiped/back, treat as Exit
             if (gameStateRef.current) {
                 isPopstateNavigationRef.current = true;
+                if (showSettingsModalRef.current) {
+                    setShowSettingsModal(false);
+                    return;
+                }
                 try { playSound('/sound/touch sound.wav', 'click'); } catch (err) { }
                 const isLocalGame = gameModeRef.current === 'pass_and_play' || gameModeRef.current === 'ai' || gameModeRef.current === 'play_along';
                 const msg = isLocalGame ? 'Do you want to end this game?' : 'Are you sure you want to exit? This will count as a declaration and your opponent will win.';
@@ -3534,23 +3545,6 @@ export default function Home() {
         const isPlayAlong = gameMode === 'play_along' || (gameState && gameState.isPlayAlong);
         const usePlayAlongGlow = isPlayAlong && playAlongHint && hintGlow;
 
-        if (usePlayAlongGlow) {
-            const paStyle = playAlongCardStyle(card, { discardGlow: hintGlow.discardGlow, drawnGlow: hintGlow.drawnGlow, selected, highlight });
-            return (
-                <button key={key} onClick={onClick} style={{ ...paStyle, ...customStyle }}>
-                    <div style={{ alignSelf: 'flex-start', display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 0.9 }}>
-                        <span style={{ fontSize: 'calc(var(--card-w) * 0.25)', fontWeight: 900 }}>{card.rank}</span>
-                        <span style={{ fontSize: 'calc(var(--card-w) * 0.2)' }}>{suitSymbols[card.suit]}</span>
-                    </div>
-                    <span style={{ fontSize: 'calc(var(--card-w) * 0.55)', lineHeight: 1 }}>{suitSymbols[card.suit]}</span>
-                    <div style={{ alignSelf: 'flex-end', display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 0.9, transform: 'rotate(180deg)' }}>
-                        <span style={{ fontSize: 'calc(var(--card-w) * 0.25)', fontWeight: 900 }}>{card.rank}</span>
-                        <span style={{ fontSize: 'calc(var(--card-w) * 0.2)' }}>{suitSymbols[card.suit]}</span>
-                    </div>
-                </button>
-            );
-        }
-
         const noInteract = !onClick;
         let cls = 'ls-playing-card';
         if (selected === 'discard' || selected === true) cls += ' selected-discard';
@@ -3558,8 +3552,15 @@ export default function Home() {
         else if (highlight) cls += ' highlight';
         if (noInteract) cls += ' no-interact';
 
+        let combinedStyle = { color: isRed ? '#c11' : '#111', ...customStyle };
+
+        if (usePlayAlongGlow) {
+            const paStyle = playAlongCardStyle(card, { discardGlow: hintGlow.discardGlow, drawnGlow: hintGlow.drawnGlow, selected, highlight });
+            combinedStyle = { ...combinedStyle, ...paStyle };
+        }
+
         return (
-            <button key={key} onClick={onClick || (() => { })} className={cls} style={{ color: isRed ? '#c11' : '#111', ...customStyle }}>
+            <button key={key} onClick={onClick || (() => { })} className={cls} style={combinedStyle}>
                 <div style={{ alignSelf: 'flex-start', display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 0.9 }}>
                     <span style={{ fontSize: 'calc(var(--card-w) * 0.25)', fontWeight: 900 }}>{card.rank}</span>
                     <span style={{ fontSize: 'calc(var(--card-w) * 0.2)' }}>{suitSymbols[card.suit]}</span>
@@ -3632,8 +3633,8 @@ export default function Home() {
     if (!connected && !gameMode) {
         const gameModes = [
             { label: 'Online Match', desc: 'Play against others worldwide', img: '/images/menu/online-match.png', action: () => checkSoloQueue('Online Match', tryOnlineMode), guestBlocked: true },
-            { label: 'Play with Friends', desc: 'Create or join a private lobby', img: '/images/menu/play-with-friends.png', action: handlePlayWithFriends },
-            { label: 'Pass and Play', desc: 'Local multiplayer on one device', img: '/images/menu/pass-and-play.png', action: () => checkSoloQueue('Pass and Play', () => setGameMode('pass_and_play')) },
+            { label: 'Play with Friends', desc: 'Create or join a private lobby', img: '/images/menu/play-with-friends.png', action: handlePlayWithFriends, descClass: 'ls-mode-desc--green' },
+            { label: 'Pass and Play', desc: 'Local multiplayer on one device', img: '/images/menu/pass-and-play.png', action: () => checkSoloQueue('Pass and Play', () => setGameMode('pass_and_play')), descClass: 'ls-mode-desc--green' },
             { label: 'Play with AI', desc: 'Practice vs smart bots', img: '/images/menu/play-with-ai.png', action: () => checkSoloQueue('Play with AI', () => setGameMode('ai')) },
             { label: 'Tutorial', desc: 'Learn how to play', img: '/images/menu/tutorial.png', action: () => setGameMode('tutorial') },
         ];
@@ -3660,7 +3661,7 @@ export default function Home() {
                                     </svg>
                                 </button>
                             </div>
-                            <LogoHeader badge="The card game where less wins" />
+                            <LogoHeader badge="The card game where less is more" />
                             <div className="ls-user-identity">
                                 <div className="ls-user-chip" style={{ margin: 0 }}>
                                     <span>👤</span>
@@ -3679,7 +3680,7 @@ export default function Home() {
                                     <div className="ls-mode-card-content">
                                         <div>
                                             <p className="ls-mode-label">{mode.label}</p>
-                                            <p className="ls-mode-desc">{mode.desc}</p>
+                                            <p className={`ls-mode-desc ${mode.descClass || ''}`}>{mode.desc}</p>
                                         </div>
                                         {mode.guestBlocked && userType === 'guest' && (
                                             <span className="ls-badge" style={{ flexShrink: 0 }}>Register</span>
@@ -3797,7 +3798,7 @@ export default function Home() {
                                             <div className="ls-party-summary">
                                                 <div>
                                                     <p className="ls-party-summary-label">Party Lobby</p>
-                                                    <p className="ls-party-summary-copy">Lobby needs at least {partySlotCount} slots.</p>
+                                                    <p className="ls-party-summary-copy ls-lobby-note">Lobby needs at least {partySlotCount} slots.</p>
                                                     <p className="ls-party-summary-copy" style={{ color: '#FFC857' }}>Note: You can only queue in 'Play with Friends' in a party</p>
                                                 </div>
                                                 {partyCreator && partyMembers.length > 1 && (
@@ -3893,7 +3894,7 @@ export default function Home() {
                 <div className="ls-card view-animate">
                     <button className="btn-back" onClick={handleInternalBack}>← Back</button>
                     <p className="ls-section-title">Tutorial</p>
-                    <p className="ls-section-desc">Pick how you'd like to learn the game.</p>
+                    <p className="ls-section-desc ls-friends-panel-note">Pick how you'd like to learn the game.</p>
                     <button
                         className="btn-secondary"
                         style={{ marginBottom: '10px' }}
@@ -3922,7 +3923,7 @@ export default function Home() {
                     >
                         👁 Observe a Game
                     </button>
-                    <div className="ls-divider"><span className="line" /><span className="text">OR</span><span className="line" /></div>
+                    <div className="ls-divider"><span className="line ls-friends-panel-note" /><span className="text ls-friends-panel-note">OR</span><span className="line ls-friends-panel-note" /></div>
                     <button
                         className="btn-gold"
                         onClick={() => {
@@ -3975,7 +3976,7 @@ export default function Home() {
                             ))}
                             {onlineLobbyPlayers.length > 1 && (
                                 <div style={{ marginTop: '16px', padding: '18px 20px', background: 'rgba(58,77,255,0.06)', borderRadius: '20px', border: '1px solid rgba(58,77,255,0.15)', backdropFilter: 'blur(8px)' }}>
-                                    <p style={{ margin: '0 0 4px', fontSize: '13px', color: '#F0F4FF', fontWeight: 600 }}>Start Early?</p>
+                                    <p className="ls-lobby-note ls-lobby-start-early" style={{ margin: '0 0 4px', fontSize: '13px', fontWeight: 600 }}>Start Early?</p>
                                     <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#8896A7' }}>
                                         Voted to start early: {onlineLobbyVotes} <br />Votes required to start: {majority}
                                     </p>
@@ -4005,14 +4006,14 @@ export default function Home() {
                 <div className="ls-card view-animate">
                     <button className="btn-back" onClick={handleInternalBack}>← Back</button>
                     <p className="ls-section-title">Play with AI</p>
-                    <p className="ls-section-desc">Bot cards are visible for training. Bot explains its reasoning after each turn.</p>
+                    <p className="ls-section-desc ls-friends-panel-note">Bot cards are visible for training. Bot explains its reasoning after each turn.</p>
 
-                    <div className="ls-divider"><span className="line" /><span className="text">Bot Mix</span><span className="line" /></div>
+                    <div className="ls-divider"><span className="line ls-friends-panel-note" /><span className="text ls-friends-panel-note">Bot Mix</span><span className="line ls-friends-panel-note" /></div>
 
                     <div className="ls-bot-row">
                         <div>
                             <p className="ls-bot-label">🟢 Easy Bots</p>
-                            <p className="ls-bot-sub">Makes mistakes, simpler strategy</p>
+                            <p className="ls-bot-sub ls-friends-panel-note">Makes mistakes, simpler strategy</p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <button className="ls-stepper-btn" onClick={() => setEasyBotCount(Math.max(0, easyBotCount - 1))} disabled={easyBotCount <= 0 || (easyBotCount === 1 && hardBotCount === 0)}>−</button>
@@ -4024,7 +4025,7 @@ export default function Home() {
                     <div className="ls-bot-row">
                         <div>
                             <p className="ls-bot-label">🔴 Hard Bots</p>
-                            <p className="ls-bot-sub">Optimal play, full reasoning</p>
+                            <p className="ls-bot-sub ls-friends-panel-note">Optimal play, full reasoning</p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <button className="ls-stepper-btn" onClick={() => setHardBotCount(Math.max(0, hardBotCount - 1))} disabled={hardBotCount <= 0 || (hardBotCount === 1 && easyBotCount === 0)}>−</button>
@@ -4055,16 +4056,16 @@ export default function Home() {
                 <div className="ls-card view-animate">
                     <button className="btn-back" onClick={handleInternalBack}>← Back</button>
                     <p className="ls-section-title">Pass and Play</p>
-                    <p className="ls-section-desc">Share the device — each player takes turns on the same screen.</p>
+                    <p className="ls-section-desc ls-friends-panel-note">Share the device — each player takes turns on the same screen.</p>
 
                     <div className="ls-input-group">
                         <label>Number of Players</label>
                         <div style={{ marginTop: '8px' }}>
-                            <Stepper value={lobbyTargetPlayers} onChange={setLobbyTargetPlayers} min={2} max={8} label={`player${lobbyTargetPlayers > 1 ? 's' : ''}`} />
+                            <Stepper value={lobbyTargetPlayers} onChange={setLobbyTargetPlayers} min={2} max={8} label={<span className="ls-friends-panel-note">{`player${lobbyTargetPlayers > 1 ? 's' : ''}`}</span>} />
                         </div>
                     </div>
 
-                    <div className="ls-divider"><span className="line" /><span className="text">Ready?</span><span className="line" /></div>
+                    <div className="ls-divider"><span className="line ls-friends-panel-note" /><span className="text ls-friends-panel-note">Ready?</span><span className="line ls-friends-panel-note" /></div>
 
                     <button
                         className="btn-gold"
@@ -4117,12 +4118,12 @@ export default function Home() {
                 <div className="ls-card view-animate">
                     <button className="btn-back" onClick={handleInternalBack}>← Back</button>
                     <p className="ls-section-title">Play with Friends</p>
-                    <p className="ls-section-desc">Create a private lobby and share the link, or join an existing one.</p>
+                    <p className="ls-section-desc ls-friends-panel-note">Create a private lobby and share the link, or join an existing one.</p>
                     <UserChip username={username} />
                     <button className="btn-gold" style={{ marginBottom: '10px' }} onClick={() => setLobbyAction('create')}>
                         🏠 Create Lobby
                     </button>
-                    <div className="ls-divider"><span className="line" /><span className="text">OR</span><span className="line" /></div>
+                    <div className="ls-divider"><span className="line ls-friends-panel-note" /><span className="text ls-friends-panel-note">OR</span><span className="line ls-friends-panel-note" /></div>
                     <button className="btn-secondary" onClick={handleJoinLobbyAction}>
                         🔗 Join with Code
                     </button>
@@ -4139,7 +4140,7 @@ export default function Home() {
                 <div className="ls-card view-animate">
                     <button className="btn-back" onClick={handleInternalBack}>← Back</button>
                     <p className="ls-section-title">Create Lobby</p>
-                    <p className="ls-section-desc">Choose how many slots to open, then share the link with your friends.</p>
+                    <p className="ls-section-desc ls-lobby-note">Choose how many slots to open, then share the link with your friends.</p>
                     <UserChip username={username} />
 
                     <div className="ls-input-group">
@@ -4150,7 +4151,7 @@ export default function Home() {
                                 onChange={setLobbyTargetPlayers}
                                 min={Math.max(2, partyMembers.length)}
                                 max={8}
-                                label={`slot${lobbyTargetPlayers !== 1 ? 's' : ''}`}
+                                label={<span className="ls-lobby-note">{`slot${lobbyTargetPlayers !== 1 ? 's' : ''}`}</span>}
                             />
                         </div>
                     </div>
@@ -4177,7 +4178,7 @@ export default function Home() {
                 <div className="ls-card view-animate">
                     <button className="btn-back" onClick={handleInternalBack}>← Back</button>
                     <p className="ls-section-title">Join Lobby</p>
-                    <p className="ls-section-desc">Paste the lobby code your friend shared with you.</p>
+                    <p className="ls-section-desc ls-lobby-note">Paste the lobby code your friend shared with you.</p>
                     <UserChip username={username} />
                     <div className="ls-input-group">
                         <label>Lobby Code</label>
@@ -4245,7 +4246,7 @@ export default function Home() {
                                 </div>
                                 <div>
                                     <p className="ls-checkbox-text">Fill remaining slots with bots</p>
-                                    <p className="ls-checkbox-sub">{vacancies} slot{vacancies !== 1 ? 's' : ''} vacant</p>
+                                    <p className="ls-checkbox-sub ls-lobby-note">{vacancies} slot{vacancies !== 1 ? 's' : ''} vacant</p>
                                 </div>
                             </div>
 
@@ -4270,7 +4271,7 @@ export default function Home() {
                                 </div>
                             )}
 
-                            <button className="btn-green" onClick={() => startLobbyGame(!fillLobbyWithBots)}>
+                            <button className="btn-green friends-start" onClick={() => startLobbyGame(!fillLobbyWithBots)}>
                                 {fillLobbyWithBots
                                     ? `▶ Start with ${lobbyCurrentPlayers}P + ${vacancies} Bot${vacancies !== 1 ? 's' : ''}`
                                     : `▶ Start with ${lobbyCurrentPlayers} Players`}
@@ -4290,7 +4291,7 @@ export default function Home() {
                 {isLobbyCreator && (
                     <div className="ls-card">
                         <p className="ls-section-title">Invite Friends</p>
-                        <p className="ls-section-desc">Share the link or lobby code.</p>
+                        <p className="ls-section-desc ls-lobby-note">Share the link or lobby code.</p>
                         <div className="ls-copy-row">
                             <input className="ls-copy-input" value={shareUrl} readOnly />
                             <button className="btn-icon success" onClick={() => copyToClipboard(shareUrl)}>Copy Link</button>
@@ -4303,7 +4304,7 @@ export default function Home() {
                 )}
 
                 <div style={{ marginTop: '14px' }}>
-                    <button className="btn-danger" onClick={isLobbyCreator ? cancelLobby : leaveLobby}>
+                    <button className="btn-danger friends-declare" onClick={isLobbyCreator ? cancelLobby : leaveLobby}>
                         {isLobbyCreator ? '✕ Cancel Lobby' : '← Leave Lobby'}
                     </button>
                 </div>
@@ -4362,8 +4363,8 @@ export default function Home() {
                 <div className="ls-card view-animate" style={{ marginBottom: '16px' }}>
                     <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                         <div style={{ fontSize: '44px', marginBottom: '10px', filter: 'drop-shadow(0 0 20px rgba(255,200,87,0.4))' }}>🏆</div>
-                        <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '32px', color: '#F0F4FF', letterSpacing: '2px' }}>Game Over</p>
-                        <p style={{ margin: '6px 0 0', color: '#8896A7', fontSize: '14px' }}>Final Leaderboard</p>
+                        <p className="ls-match-details-leaderboard-title" style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: '32px', letterSpacing: '2px' }}>Game Over</p>
+                        <p className="ls-match-details-date-time" style={{ margin: '6px 0 0', fontSize: '14px' }}>Final Leaderboard</p>
                     </div>
 
                     {rankedPlayers.map((player, index) => {
@@ -4373,12 +4374,26 @@ export default function Home() {
                         const eliminatedReason = player.eliminatedReason;
                         const didExit = eliminatedReason === 'exit';
                         const disconnectedEliminated = isEliminated && ['disconnect-eliminated', 'poll-eliminate', 'disconnect-claimed', 'guest-expire'].includes(eliminatedReason);
+                        
+                        let scoreClass = 'ls-match-details-player-score-default';
+                        let rowClass = 'ls-match-details-player-row-default';
+                        if (cls === 'gold') {
+                            rowClass = 'ls-match-details-player-row-gold';
+                            scoreClass = 'ls-match-details-player-score-gold';
+                        } else if (cls === 'silver') {
+                            rowClass = 'ls-match-details-player-row-silver';
+                            scoreClass = 'ls-match-details-player-score-silver';
+                        } else if (cls === 'bronze') {
+                            rowClass = 'ls-match-details-player-row-bronze';
+                            scoreClass = 'ls-match-details-player-score-bronze';
+                        }
+
                         return (
-                            <div key={index} className={`ls-rank-row ${cls}`}>
+                            <div key={index} className={rowClass} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: '16px', marginBottom: '8px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <span style={{ fontSize: '22px', minWidth: '28px' }}>{medal(index, total)}</span>
+                                    <span style={{ fontSize: '22px', minWidth: '28px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{medal(index, total)}</span>
                                     <div>
-                                        <p style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: '#F0F4FF' }}>{player.username}</p>
+                                        <p className="ls-match-details-player-name">{player.username}</p>
                                         <div style={{ display: 'flex', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
                                             {isEliminated && <span className="ls-badge red">Eliminated</span>}
                                             {disconnectedEliminated && <span className="ls-badge blue">Disconnected</span>}
@@ -4386,7 +4401,7 @@ export default function Home() {
                                         </div>
                                     </div>
                                 </div>
-                                <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '32px', color: cls === 'gold' ? '#FFC857' : '#F0F4FF', letterSpacing: '1px' }}>
+                                <span className={scoreClass} style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: '26px', letterSpacing: '1px' }}>
                                     {player.score}
                                 </span>
                             </div>
@@ -4408,7 +4423,7 @@ export default function Home() {
                             <tbody>
                                 {gameState.roundHistory.map((round, rIdx) => (
                                     <tr key={rIdx}>
-                                        <td style={{ textAlign: 'left', color: '#8896A7' }}>#{rIdx + 1}</td>
+                                        <td className="ls-match-details-date-time" style={{ textAlign: 'left' }}>#{rIdx + 1}</td>
                                         {round.scores.map((score, pIdx) => {
                                             if (score === null) return <td key={pIdx} />;
                                             const isDeclarer = round.declarerId === pIdx;
@@ -4416,15 +4431,15 @@ export default function Home() {
                                                 <td key={pIdx}>
                                                     <span className={`ls-score-chip ${score === 0 ? 'zero' : 'pos'}`}>
                                                         {score}
-                                                        {isDeclarer && <span title="Declarer" style={{ marginLeft: '4px', color: round.won ? '#4ade80' : '#FC8181' }}>★</span>}
+                                                        <span title={isDeclarer ? "Declarer" : undefined} style={{ visibility: isDeclarer ? 'visible' : 'hidden', marginLeft: '4px', color: isDeclarer ? (round.won ? '#4ade80' : '#FC8181') : 'inherit' }}>★</span>
                                                     </span>
                                                 </td>
                                             );
                                         })}
                                     </tr>
                                 ))}
-                                <tr style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                                    <td style={{ textAlign: 'left', fontWeight: 700, color: '#F0F4FF' }}>Final</td>
+                                <tr className="ls-round-table-final-row" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                                    <td className="ls-match-details-leaderboard-title" style={{ textAlign: 'left', fontWeight: 700 }}>Final</td>
                                     {gameState.players.map((p, i) => (
                                         <td key={i} style={{ fontWeight: 700, color: '#FFC857' }}>{p.score}</td>
                                     ))}
@@ -4437,7 +4452,7 @@ export default function Home() {
                     </div>
                 )}
 
-                <button className="btn-primary" onClick={goBackHome}>← Back to Home</button>
+                <button className="btn-gold" onClick={goBackHome}>← Back to Home</button>
             </PageShell>
         );
     }
@@ -4462,9 +4477,9 @@ export default function Home() {
                     <div className="ls-topbar" style={{ position: 'sticky', top: 0, zIndex: 100 }}>
                         <div className="ls-topbar-badges">
                             <span className="ls-topbar-brand">LEASTSCORE</span>
-                            {isPlayAlong && <span className="ls-badge">Play Along</span>}
-                            {isAIMode && <span className="ls-badge blue">vs AI</span>}
-                            {gameMode === 'pass_and_play' && <span className="ls-badge">Pass & Play</span>}
+                            {isPlayAlong && <span className="ls-badge hand-sum">Play Along</span>}
+                            {isAIMode && <span className="ls-badge hand-sum">vs AI</span>}
+                            {gameMode === 'pass_and_play' && <span className="ls-badge hand-sum">Pass & Play</span>}
                         </div>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <button className="ls-toolbar-btn settings" onClick={() => setShowSettingsModal(true)} data-tooltip="Settings" aria-label="Settings">
@@ -4540,7 +4555,7 @@ export default function Home() {
                         {/* Draw from zone */}
                         <div className="ls-zone ls-draw-zone">
                             <p className="ls-zone-label">
-                                <span>Draw From</span>
+                                <span className="ls-draw-zone-title">Draw From</span>
                                 {drawFrom === 'visible' && gameState.visibleCard.length > 1 && visibleIndex == null && (
                                     <span style={{ fontSize: '11px', color: '#FC8181', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>Select one visible card</span>
                                 )}
@@ -4609,13 +4624,13 @@ export default function Home() {
                         </div>
 
                         {/* Your hand zone */}
-                        <div className={`ls-zone${isMyTurn ? ' active' : ''}`}>
+                        <div className={`ls-zone your-hand-zone${isMyTurn ? ' active' : ''}`}>
                             <p className="ls-zone-label">
                                 <span>
                                     {passScreen ? `Pass to ${myPlayer.username}` : (turnFinishedScreen && isNewRoundPass) ? "Next Round" : `Your Hand (${myPlayer.hand.length} cards)`}
                                 </span>
                                 {(!passScreen && !(turnFinishedScreen && isNewRoundPass)) && (
-                                    <span className="ls-badge">Sum: {getHandSum(myPlayer.hand)}</span>
+                                    <span className="ls-badge hand-sum">Sum: {getHandSum(myPlayer.hand)}</span>
                                 )}
                             </p>
                             <div style={{ display: 'flex', justifyContent: 'center', minHeight: 'calc(var(--card-h) * 1.15)', marginTop: '4px', overflow: 'visible', alignItems: 'flex-end', paddingBottom: '12px', transform: 'translateY(-8px)' }}>
@@ -4686,7 +4701,7 @@ export default function Home() {
                                 🔄 Pass Device to {gameState.players[gameState.currentPlayer]?.username}
                             </button>
                         ) : passScreen ? (
-                            <button className="btn-primary" onClick={() => {
+                            <button className="btn-gold ls-action-btn make-turn" aria-label="Show My Cards" onClick={() => {
                                 playSound('/sound/turn sound.mp3', 'game');
                                 try { const AudioContext = window.AudioContext || window.webkitAudioContext; if (AudioContext) { const ctx = new AudioContext(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value = 880; osc.type = 'sine'; gain.gain.setValueAtTime(0.1, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1); osc.start(); osc.stop(ctx.currentTime + 0.1); } } catch (e) { }
                                 setPassScreen(false);
@@ -4697,6 +4712,7 @@ export default function Home() {
                             <div className="ls-action-row">
                                 <button
                                     className={`ls-action-btn make-turn${isMyTurn ? ' turn-shine' : ''}`}
+                                    aria-label="Make Turn"
                                     onClick={makeTurn}
                                     disabled={!isMyTurn}
                                 >
@@ -4765,12 +4781,12 @@ export default function Home() {
                         <div className="ls-scoreboard-wrap" style={{ position: 'relative', zIndex: 1, marginTop: '16px', padding: '20px 0 0', overflowX: 'auto' }}>
                             <div className="ls-scoreboard-inner" style={{ display: 'inline-flex', flexDirection: 'column', minWidth: '100%', paddingBottom: 0 }}>
                                 {/* Scoreboard Header */}
-                                <div style={{ display: 'flex', flexDirection: 'row', padding: '0 8px 4px 8px', borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: '4px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'row', padding: '0 8px 4px 8px', borderBottom: '1px solid var(--ls-scoreboard-divider, rgba(255,255,255,0.07))', marginBottom: '4px' }}>
                                     <div style={{ width: '140px', minWidth: '90px', marginRight: '8px' }}></div>
-                                    <div style={{ width: '35px', minWidth: '35px', marginRight: '8px', fontSize: '10px', color: '#8896A7', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Draw</div>
-                                    <div style={{ width: '160px', minWidth: '160px', marginRight: '8px', fontSize: '10px', color: '#8896A7', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Discard</div>
-                                    <div style={{ width: '40px', minWidth: '40px', marginRight: '8px', fontSize: '10px', color: '#8896A7', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total</div>
-                                    <div style={{ flex: '1 0 auto', fontSize: '10px', color: '#8896A7', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Roundwise</div>
+                                    <div style={{ width: '35px', minWidth: '35px', marginRight: '8px', fontSize: '10px', color: 'var(--ls-scoreboard-header-color, #8896A7)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Draw</div>
+                                    <div style={{ width: '160px', minWidth: '160px', marginRight: '8px', fontSize: '10px', color: 'var(--ls-scoreboard-header-color, #8896A7)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Discard</div>
+                                    <div style={{ width: '40px', minWidth: '40px', marginRight: '8px', fontSize: '10px', color: 'var(--ls-scoreboard-header-color, #8896A7)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total</div>
+                                    <div style={{ flex: '1 0 auto', fontSize: '10px', color: 'var(--ls-scoreboard-header-color, #8896A7)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Roundwise</div>
                                 </div>
 
                                 {gameState.players.map((_, i) => {
@@ -4788,13 +4804,13 @@ export default function Home() {
                                         <div key={`scoreboard-${idx}`} className={cardCls} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginBottom: '4px', padding: '8px' }}>
 
                                             {/* Column 1: Name and Turn Badge */}
-                                            <div style={{ width: '140px', minWidth: '90px', borderRight: '1px solid rgba(255,255,255,0.07)', paddingRight: '8px', marginRight: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
+                                            <div style={{ width: '140px', minWidth: '90px', borderRight: '1px solid var(--ls-scoreboard-divider, rgba(255,255,255,0.07))', paddingRight: '8px', marginRight: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
                                                 {isCurrentTurn && (
                                                     <div className={`ls-player-card-turn-badge ${player.isThinking ? 'thinking' : 'normal'}`} style={{ top: '-18px' }}>
                                                         {player.isThinking ? '🤖 Thinking…' : 'Active Turn'}
                                                     </div>
                                                 )}
-                                                <p className="ls-player-card-name" style={{ color: isMe ? '#FFC857' : '#F0F4FF', margin: 0, fontSize: '13px' }}>
+                                                <p className="ls-player-card-name" style={{ color: isMe ? 'var(--ls-scoreboard-me-color, #FFC857)' : 'var(--ls-scoreboard-name-color, #F0F4FF)', margin: 0, fontSize: '13px' }}>
                                                     {isMe && '👤 '}
                                                     {player.username}
                                                     {isEliminated && <span style={{ fontSize: '10px', color: '#FC8181', display: 'block', marginTop: '2px' }}>(Out)</span>}
@@ -4805,29 +4821,29 @@ export default function Home() {
                                             <div style={{ width: '35px', minWidth: '35px', marginRight: '8px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                                                 {player.lastDrawnCard ? (
                                                     (player.lastDrawnCard.hidden || (idx !== myPlayerIndex && player.lastDrawnFrom === 'deck')) ? (
-                                                        <span style={{ fontSize: '18px', color: '#8896A7', whiteSpace: 'nowrap' }}>🂠</span>
+                                                        <span style={{ fontSize: '18px', color: 'var(--ls-scoreboard-muted-color, #8896A7)', whiteSpace: 'nowrap' }}>🂠</span>
                                                     ) : (
-                                                        <span style={{ fontSize: '18px', fontWeight: 700, color: (player.lastDrawnCard.suit === 'hearts' || player.lastDrawnCard.suit === 'diamonds') ? '#FC8181' : '#F0F4FF', whiteSpace: 'nowrap' }}>
+                                                        <span style={{ fontSize: '18px', fontWeight: 700, color: (player.lastDrawnCard.suit === 'hearts' || player.lastDrawnCard.suit === 'diamonds') ? 'var(--ls-scoreboard-red-color, #FC8181)' : 'var(--ls-scoreboard-text-color, #F0F4FF)', whiteSpace: 'nowrap' }}>
                                                             {player.lastDrawnCard.rank}{suitSymbols[player.lastDrawnCard.suit]}
                                                         </span>
                                                     )
-                                                ) : <span style={{ fontSize: '18px', color: '#4A5568' }}>—</span>}
+                                                ) : <span style={{ fontSize: '18px', color: 'var(--ls-scoreboard-muted-color, #4A5568)' }}>—</span>}
                                             </div>
 
                                             {/* Column 3: Discard */}
                                             <div style={{ width: '160px', minWidth: '160px', marginRight: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                                                 {player.lastDiscard && player.lastDiscard.length > 0
                                                     ? player.lastDiscard.map((card, i) => (
-                                                        <span key={i} style={{ fontSize: '18px', fontWeight: 700, color: (card.suit === 'hearts' || card.suit === 'diamonds') ? '#FC8181' : '#F0F4FF', whiteSpace: 'nowrap' }}>
+                                                        <span key={i} style={{ fontSize: '18px', fontWeight: 700, color: (card.suit === 'hearts' || card.suit === 'diamonds') ? 'var(--ls-scoreboard-red-color, #FC8181)' : 'var(--ls-scoreboard-text-color, #F0F4FF)', whiteSpace: 'nowrap' }}>
                                                             {card.rank}{suitSymbols[card.suit]}
                                                         </span>
                                                     ))
-                                                    : <span style={{ fontSize: '18px', color: '#4A5568' }}>—</span>}
+                                                    : <span style={{ fontSize: '18px', color: 'var(--ls-scoreboard-muted-color, #4A5568)' }}>—</span>}
                                             </div>
 
                                             {/* Column 4: Total */}
                                             <div style={{ width: '40px', minWidth: '40px', marginRight: '8px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                                                <p style={{ color: isCurrentTurn ? '#FFC857' : '#F0F4FF', margin: 0, fontWeight: 'bold', fontSize: '16px' }}>
+                                                <p style={{ color: isCurrentTurn ? 'var(--ls-scoreboard-active-total-color, #FFC857)' : 'var(--ls-scoreboard-total-color, #F0F4FF)', margin: 0, fontWeight: 'bold', fontSize: '16px' }}>
                                                     {player.score}
                                                 </p>
                                             </div>
@@ -4840,7 +4856,8 @@ export default function Home() {
                                                     const isDeclarer = round.declarerId === idx;
                                                     return (
                                                         <span key={rIdx} className={`ls-score-chip ${score === 0 ? 'zero' : 'pos'}`} style={{ fontSize: '11px', padding: '2px 4px', minWidth: '32px', boxSizing: 'border-box', textAlign: 'center', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-block' }}>
-                                                            {score}{isDeclarer ? <span style={{ color: round.won ? '#4ade80' : '#FC8181', marginLeft: '2px' }}>★</span> : ''}
+                                                            {score}
+                                                            <span style={{ visibility: isDeclarer ? 'visible' : 'hidden', color: isDeclarer ? (round.won ? '#4ade80' : '#FC8181') : 'inherit', marginLeft: '2px' }}>★</span>
                                                         </span>
                                                     );
                                                 })}
@@ -4922,7 +4939,7 @@ export default function Home() {
                                                             <span>🧠</span> Why {gameState.players[botReasoning.botIndex ?? 1]?.username || 'Bot'} Played This
                                                         </p>
                                                         {botReasoning.decision.map((line, i) => (
-                                                            <p key={i} className="ls-reasoning-line" style={{ color: '#F0F4FF' }}>{line}</p>
+                                                            <p key={i} className="ls-reasoning-line">{line}</p>
                                                         ))}
                                                     </div>
                                                 )}

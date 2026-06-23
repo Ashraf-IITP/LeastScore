@@ -1122,6 +1122,18 @@ const GLOBAL_CSS = `
     justify-content: space-between;
   }
 
+  [data-theme="light"] .ls-zone-label {
+    color: #0D2118;
+  }
+
+  [data-theme="light"] .ls-bot-label-name {
+    color: #0D2118 !important;
+  }
+
+  [data-theme="light"] .ls-tutorial-summary-text {
+    color: #225239 !important;
+  }
+
   /* ── Playing card ── */
   .ls-playing-card {
     cursor: pointer;
@@ -1582,7 +1594,7 @@ export default function ScriptedMatch({ onExit }) {
 
           <div style={{ margin: '20px 0 30px' }}>
             <h2 className="ls-section-title">Tutorial Summary</h2>
-            <div style={{ textAlign: 'left', fontSize: '14px', lineHeight: '1.8', color: '#A8B4C2', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'pre-wrap' }}>
+            <div className="ls-tutorial-summary-text" style={{ textAlign: 'left', fontSize: '14px', lineHeight: '1.8', color: '#A8B4C2', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'pre-wrap' }}>
               {stage.prompt}
             </div>
           </div>
@@ -1631,7 +1643,7 @@ export default function ScriptedMatch({ onExit }) {
               textAlign: 'center'
             }}>
               {pl.active && <div style={{ fontSize: '10px', color: '#4ade80', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>Active Turn</div>}
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F4FF', marginBottom: '4px' }}>{pl.name}</div>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#F0F4FF', marginBottom: '4px' }} className={pl.name === 'Bot' ? 'ls-bot-label-name' : undefined}>{pl.name}</div>
               <div style={{ fontSize: '24px', fontWeight: 'bold', color: pl.active ? '#4ade80' : '#FFC857' }}>{pl.gameScore}</div>
               <div style={{ fontSize: '11px', color: '#8896A7', marginTop: '4px' }}>Hand: {pl.handScore} pts</div>
             </div>
