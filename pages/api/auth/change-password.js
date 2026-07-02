@@ -1,6 +1,6 @@
 // pages/api/auth/change-password.js
 // Allows a logged-in local user to change their password (verifies current first).
-import { getUserFromRequest, verifyPassword, hashPassword, signJWT, setAuthCookie, formatUsername } from '../../../lib/auth';
+import { getUserFromRequest, verifyPassword, hashPassword, signJWT, setAuthCookie, buildRegisteredJWTPayload } from '../../../lib/auth';
 import { getPool } from '../../../lib/db';
 
 export default async function handler(req, res) {
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   try {
     const pool = getPool();
     const [rows] = await pool.query(
-      `SELECT id, display_name, tag, password_hash, token_version, auth_provider
+      `SELECT id, first_name, last_name, nickname, email, password_hash, token_version, auth_provider
        FROM users WHERE id = ? AND auth_provider = 'local'`,
       [decoded.userId]
     );
@@ -39,19 +39,16 @@ export default async function handler(req, res) {
 
     const newHash = await hashPassword(newPassword);
     await pool.query(
-      `UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?`,
+      `UPDATE users SET password_hash = ?, token_version = token_version + 1, must_reset_password = 0 WHERE id = ?`,
       [newHash, user.id]
     );
 
-    // Re-fetch updated token_version and issue fresh JWT
-    const [[updated]] = await pool.query('SELECT token_version FROM users WHERE id = ?', [user.id]);
+    const [[updated]] = await pool.query(
+      'SELECT token_version FROM users WHERE id = ?',
+      [user.id]
+    );
     const token = signJWT({
-      userId:           user.id,
-      tokenVersion:     updated.token_version,
-      username:         formatUsername(user.display_name, user.tag),
-      display_name:     user.display_name,
-      tag:              user.tag,
-      type:             'registered',
+      ...buildRegisteredJWTPayload({ ...user, token_version: updated.token_version }),
       mustResetPassword: false,
     });
     setAuthCookie(res, token);

@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { playBGM } from '../lib/bgm';
 import { loadSoundSettings, getVolumeForCategory } from '../lib/soundSettings';
+import { apiFetch } from '../lib/apiFetch';
 
 function Field({ label, type = 'text', value, onChange, placeholder, maxLength, autoComplete }) {
   return (
@@ -28,8 +29,10 @@ const SuitParticle = ({ suit, style }) => (
 
 export default function ChangeNamePage() {
   const router = useRouter();
-  const [displayName, setDisplayName] = useState('');
-  const [tag, setTag] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [nickname, setNickname] = useState('');
+  const [authProvider, setAuthProvider] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -80,15 +83,17 @@ export default function ChangeNamePage() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/auth/me')
+    apiFetch('/api/auth/me')
       .then((res) => res.json())
       .then((data) => {
         if (!data?.user) {
           router.replace('/login');
           return;
         }
-        setDisplayName(data.user.display_name || '');
-        setTag((data.user.tag || '').toUpperCase());
+        setFirstName(data.user.first_name || '');
+        setLastName(data.user.last_name || '');
+        setNickname(data.user.nickname || '');
+        setAuthProvider(data.user.type || '');
       })
       .catch(() => {
         router.replace('/login');
@@ -102,10 +107,9 @@ export default function ChangeNamePage() {
     setSaving(true);
 
     try {
-      const res = await fetch('/api/auth/settings', {
+      const res = await apiFetch('/api/auth/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, tag }),
+        body: JSON.stringify({ firstName, lastName, nickname }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
@@ -177,26 +181,25 @@ export default function ChangeNamePage() {
               <div className="view-animate">
                 <h2 className="view-title">Update Profile</h2>
                 <p className="view-desc">
-                    Update your display name and tag.
+                    Update your name and nickname.
                   </p>
-                <div className="input-row mt-4" style={{ marginTop: '20px' }}>
-                  <div style={{ flex: 2 }}>
-                    <Field label="Name" value={displayName} onChange={setDisplayName} placeholder="YourName" maxLength={20} />
+                {authProvider !== 'guest' && <div className="input-row mt-4" style={{ marginTop: '20px' }}>
+                  <div style={{ flex: 1 }}>
+                    <Field label="First Name" value={firstName} onChange={setFirstName} placeholder="John" maxLength={20} />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <Field label="#ID" value={tag} onChange={v => setTag(v.toUpperCase())} placeholder="AB12" maxLength={4} />
+                    <Field label="Last Name" value={lastName} onChange={setLastName} placeholder="Doe" maxLength={20} />
                   </div>
+                </div>}
+                <div className="input-group">
+                  <Field label="Nickname" value={nickname} onChange={setNickname} placeholder="Johnny" maxLength={20} />
                 </div>
-                <p className="field-hint">Name must be 3–20 characters: letters, numbers, or underscore.</p>
-                <p className="field-hint" style={{ marginBottom: '24px' }}>Tag must be exactly 4 uppercase letters or digits.</p>
-                <p className="username-hint">
-                  Playing as <strong>{displayName || 'Player'}#{(tag || 'XXXX').toUpperCase()}</strong>
-                </p>
+                <p className="field-hint">Names and nickname must be up to 20 characters.</p>
 
                 {error && <div className="alert-error view-animate">{error}</div>}
                 {success && <div className="alert-success view-animate">{success}</div>}
 
-                <button className="btn-gold mt-4" type="button" onClick={saveChanges} disabled={saving || !displayName || tag.length < 4}>
+                <button className="btn-gold mt-4" type="button" onClick={saveChanges} disabled={saving || (authProvider !== 'guest' && !firstName) || !nickname}>
                   {saving ? 'Saving…' : 'Save Changes 🎮'}
                 </button>
                 <button className="btn-secondary mt-3" type="button" onClick={cancel} disabled={saving} style={{ marginTop: '12px' }}>

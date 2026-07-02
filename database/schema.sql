@@ -26,13 +26,12 @@ DROP TABLE IF EXISTS `guest_sessions`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `guest_sessions` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `display_name` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tag` char(4) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nickname` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `socket_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Current socket.io socket ID.',
   `expires_at` timestamp NOT NULL COMMENT 'Kept far-future while connected; set to NOW()+60s on disconnect.',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_guest_username` (`display_name`,`tag`),
+  UNIQUE KEY `uq_guest_nickname` (`nickname`),
   KEY `idx_expires` (`expires_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -69,11 +68,26 @@ CREATE TABLE `otp_sessions` (
 --
 -- Dumping data for table `otp_sessions`
 --
-
 LOCK TABLES `otp_sessions` WRITE;
 /*!40000 ALTER TABLE `otp_sessions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `otp_sessions` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `countries`
+--
+DROP TABLE IF EXISTS `countries`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `countries` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `country_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `iso2` char(2) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'ISO 3166-1 alpha-2 code for flag display.',
+  `phone_code` varchar(5) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'International dialing prefix without +, e.g. 91 for India.',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_countries_iso2` (`iso2`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Table structure for table `users`
@@ -84,33 +98,28 @@ DROP TABLE IF EXISTS `users`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `users` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `display_name` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Letters, numbers, underscores. 3-20 chars.',
-  `tag` char(4) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '4 uppercase alphanumeric chars chosen by user.',
+  `first_name` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Letters, numbers, underscores. 3-20 chars.',
+  `last_name` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nickname` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `country_id` int unsigned DEFAULT NULL,
+  `dob` date DEFAULT NULL,
+  `gender` enum('male','female','other') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `auth_provider` enum('local','google','microsoft','facebook','apple') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'local',
   `provider_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'OAuth subject/sub from the provider.',
-  `email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'E.164 format e.g. +919876543210',
   `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'bcrypt hash. NULL for social-only accounts.',
   `token_version` int unsigned NOT NULL DEFAULT '0' COMMENT 'Increment on password change to invalidate old JWTs.',
+  `must_reset_password` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_username` (`display_name`,`tag`),
   UNIQUE KEY `uq_provider` (`auth_provider`,`provider_id`),
-  KEY `idx_phone` (`phone`),
-  KEY `idx_email` (`email`)
+  UNIQUE KEY `uq_email` (`email`),
+  KEY `idx_phone` (`phone`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Dumping data for table `users`
---
-
-LOCK TABLES `users` WRITE;
-/*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'Ronnie','DUKE','local',NULL,NULL,'+918108100142','$2b$12$Zz7TkAHdxlv6hxACyQw2Xufqx.KauyZbAWZyr9TlJA2NVQ8de.H5y',0,'2026-04-21 12:12:24','2026-04-21 12:12:24');
-/*!40000 ALTER TABLE `users` ENABLE KEYS */;
-UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -120,8 +129,6 @@ UNLOCK TABLES;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-
--- Dump completed on 2026-04-21 19:57:47
 
 -- ============================================================
 -- Required Settings & Events for LeastScore

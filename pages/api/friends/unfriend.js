@@ -13,24 +13,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { friendUsername } = req.body;
-    if (!friendUsername) {
-      return res.status(400).json({ error: 'friendUsername is required' });
+    const { friendId } = req.body;
+    if (!friendId) {
+      return res.status(400).json({ error: 'friendId is required' });
     }
 
     const pool = getPool();
-    const friend = await unfriend(pool, user.userId, friendUsername);
+    await unfriend(pool, user.userId, friendId);
 
-    if (global.io) {
-      const { getSocketIds } = require('../../../lib/online');
-      const sockets = getSocketIds(friend.id);
-      if (sockets) {
-        for (const sid of sockets) global.io.to(sid).emit('friendDataChanged');
-      }
-    }
-
-    return res.status(200).json({ message: `Unfriended ${friendUsername}` });
+    return res.status(200).json({ message: 'Friend removed.' });
   } catch (error) {
-    return res.status(400).json({ error: error.message || 'Unable to unfriend' });
+    return res.status(400).json({ error: error.message || 'Unable to unfriend user' });
   }
 }

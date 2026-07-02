@@ -4,6 +4,16 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { playBGM, stopBGM, setBGMVolume } from '../lib/bgm';
 import { loadSoundSettings, getVolumeForCategory } from '../lib/soundSettings';
+import CountrySelect from '../components/CountrySelect';
+import { apiFetch } from '../lib/apiFetch';
+import { saveToken } from '../lib/tokenStorage';
+import { registerOAuthDeepLinkHandler } from '../lib/oauthDeepLink';
+
+// Capacitor Browser plugin — only available at runtime on mobile
+let CapacitorBrowser = null;
+if (typeof window !== 'undefined' && window.Capacitor) {
+  import('@capacitor/browser').then(m => { CapacitorBrowser = m.Browser; }).catch(() => {});
+}
 
 
 // ── SVG Brand Icons ───────────────────────────────────────────
@@ -56,6 +66,10 @@ export default function Login() {
 
   const [guestName, setGuestName] = useState('');
   const [guestTag, setGuestTag] = useState('');
+  
+  const [countryId, setCountryId] = useState('');
+  const [dob, setDob] = useState('');
+  const [gender, setGender] = useState('');
 
   const [oauthTempToken, setOauthTempToken] = useState('');
   const [oauthProvider, setOauthProvider] = useState('');
@@ -110,14 +124,12 @@ export default function Login() {
 
 
   useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(d => {
+    apiFetch('/api/auth/me').then(r => r.json()).then(d => {
       const isUpgradeFlow = router.query?.upgradeGuest === '1';
       if (d.user) {
         if (isUpgradeFlow && d.user.type === 'guest') {
-          setGuestName(d.user.display_name || '');
-          setGuestTag((d.user.tag || '').toUpperCase());
-          setRegName(d.user.display_name || '');
-          setRegTag((d.user.tag || '').toUpperCase());
+          setGuestName(d.user.nickname || '');
+          setRegName(d.user.nickname || '');
           setUpgradeGuestSessionId(d.user.guestSessionId || null);
           setView('main');
           setChecking(false);
@@ -131,19 +143,41 @@ export default function Login() {
   }, [router.query]);
 
   useEffect(() => {
-    const { step, provider, tempToken, suggestedName, guestName: qGuestName, guestTag: qGuestTag, guestSessionId: qGuestSessionId, error: qErr } = router.query || {};
+    const { step, provider, tempToken, firstName, lastName, guestName: qGuestName, guestSessionId: qGuestSessionId, error: qErr } = router.query || {};
     if (qErr) setError(decodeURIComponent(qErr));
-    if (step === 'choose-username' && provider && tempToken) {
-      setView('oauth-username');
+    if (step === 'complete-profile' && provider && tempToken) {
+      setView('oauth-profile');
       setOauthProvider(provider);
       setOauthTempToken(decodeURIComponent(tempToken));
-      if (suggestedName) setRegName(decodeURIComponent(suggestedName).replace(/[^A-Za-z0-9_]/g, '').slice(0, 20));
-      if (qGuestName) setRegName(decodeURIComponent(qGuestName).replace(/[^A-Za-z0-9_]/g, '').slice(0, 20));
-      if (qGuestTag) setRegTag(decodeURIComponent(qGuestTag).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4));
+      if (firstName) setRegName(decodeURIComponent(firstName).slice(0, 20));
+      if (lastName) setRegTag(decodeURIComponent(lastName).slice(0, 20)); // using regTag for lastName for now
       if (qGuestSessionId) setUpgradeGuestSessionId(Number(qGuestSessionId));
       setChecking(false);
     }
   }, [router.query]);
+
+  // ── Capacitor OAuth deep-link handler (mobile only) ─────────
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.Capacitor) return;
+
+    registerOAuthDeepLinkHandler(
+      // onSuccess: token already saved inside the handler
+      () => router.replace('/'),
+      // onError
+      (err) => setError(err),
+      // onNeedsProfile: new social user on mobile
+      ({ provider, tempToken, firstName, lastName }) => {
+        setOauthProvider(provider);
+        setOauthTempToken(tempToken);
+        if (firstName) setRegName(firstName.slice(0, 20));
+        if (lastName)  setRegTag(lastName.slice(0, 20));
+        setView('oauth-profile');
+        setChecking(false);
+      }
+    );
+    // The listener lives for the lifetime of this component; Capacitor
+    // does not return a handle to remove single listeners, so no cleanup needed.
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const playClickSound = (e) => {
@@ -161,7 +195,7 @@ export default function Login() {
   }, []);
 
   const post = async (url, body) => {
-    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await apiFetch(url, { method: 'POST', body: JSON.stringify(body) });
     return r.json();
   };
 
@@ -172,8 +206,9 @@ export default function Login() {
   };
 
   const handleLogin = () => go(async () => {
-    const d = await post('/api/auth/login', { username: loginUser, password: loginPass });
+    const d = await post('/api/auth/login', { loginId: loginUser, password: loginPass });
     if (d.error) return setError(d.error);
+    if (d.token) saveToken(d.token);
     if (d.mustResetPassword) return router.replace('/reset-password');
     router.replace('/');
   });
@@ -187,8 +222,12 @@ export default function Login() {
   const handleOAuthUsername = () => go(async () => {
     const d = await post('/api/auth/oauth/set-username', {
       tempToken: oauthTempToken,
-      displayName: regName,
-      tag: regTag,
+      firstName: regName,
+      lastName: regTag,
+      nickname: guestName,
+      countryId: countryId,
+      dob: dob,
+      gender: gender,
       guestSessionId: upgradeGuestSessionId || undefined
     });
     if (d.error) return setError(d.error);
@@ -202,16 +241,33 @@ export default function Login() {
   });
 
   const handleOAuth = (provider) => {
+    const isMobile = typeof window !== 'undefined' && !!window.Capacitor;
+
     if (upgradeGuestSessionId) {
       const query = new URLSearchParams({
         upgradeGuestSessionId: String(upgradeGuestSessionId),
         upgradeGuestName: regName || guestName || '',
-        upgradeGuestTag: (regTag || guestTag || '').toUpperCase()
+        upgradeGuestTag: (regTag || guestTag || '').toUpperCase(),
+        ...(isMobile ? { mobile: '1' } : {})
       }).toString();
-      window.location.href = `/api/auth/oauth/${provider}?${query}`;
+      const url = `/api/auth/oauth/${provider}?${query}`;
+      if (isMobile && CapacitorBrowser) {
+        CapacitorBrowser.open({ url });
+      } else {
+        window.location.href = url;
+      }
       return;
     }
-    window.location.href = `/api/auth/oauth/${provider}`;
+
+    const url = isMobile
+      ? `/api/auth/oauth/${provider}?mobile=1`
+      : `/api/auth/oauth/${provider}`;
+
+    if (isMobile && CapacitorBrowser) {
+      CapacitorBrowser.open({ url });
+    } else {
+      window.location.href = url;
+    }
   };
 
   const changeView = (v) => { setView(v); setError(''); setSuccess(''); setForgotSent(false); setForgotEmail(''); };
@@ -927,7 +983,7 @@ export default function Login() {
 
                       <div className="footer-links">
                         <span className="link-text" onClick={() => changeView('login')}>
-                          Login with username & password
+                          Login with email & password
                         </span>
                       </div>
                     </>
@@ -941,7 +997,7 @@ export default function Login() {
                   <button className="btn-back" onClick={() => changeView('main')}>← Back</button>
                   <h2 className="view-title">Guest Login</h2>
                   <p className="view-desc">
-                    Play without an account. A random username and tag will be assigned automatically.
+                    Play without an account. A random nickname will be assigned automatically.
                   </p>
                   <button className="btn-gold mt-4" onClick={handleGuest} disabled={loading}>
                     {loading ? 'Joining…' : 'Play as Guest 🎮'}
@@ -954,8 +1010,8 @@ export default function Login() {
                 <div className="view-animate">
                   <button className="btn-back" onClick={() => changeView('main')}>← Back</button>
                   <h2 className="view-title">Account Login</h2>
-                  <p className="view-desc">Log in with your username and password.</p>
-                  <Field label="Username (Name#ID)" value={loginUser} onChange={setLoginUser} placeholder="e.g. Altius#AB12" autoComplete="username" />
+                  <p className="view-desc">Log in with your email and password.</p>
+                  <Field label="Email" value={loginUser} onChange={setLoginUser} placeholder="you@example.com" autoComplete="username" />
                   <Field label="Password" type="password" value={loginPass} onChange={setLoginPass} placeholder="Your password" autoComplete="current-password" />
                   <button className="btn-gold mt-4" onClick={handleLogin} disabled={loading || !loginUser || !loginPass}>
                     {loading ? 'Logging in…' : 'Log In'}
@@ -1007,22 +1063,38 @@ export default function Login() {
                 </div>
               )}
 
-              {/* ── OAUTH USERNAME VIEW ── */}
-              {view === 'oauth-username' && (
+              {/* ── OAUTH COMPLETE PROFILE VIEW ── */}
+              {view === 'oauth-profile' && (
                 <div className="view-animate">
                   <h2 className="view-title">Almost there!</h2>
                   <p className="view-desc">
-                    Pick a unique username to complete your <strong style={{ color: '#F0F4FF', textTransform: 'capitalize' }}>{oauthProvider}</strong> sign-up.
+                    Complete your profile for <strong style={{ color: '#F0F4FF', textTransform: 'capitalize' }}>{oauthProvider}</strong> sign-up.
                   </p>
                   <div className="input-row">
-                    <div style={{ flex: 2 }}><Field label="Name" value={regName} onChange={setRegName} placeholder="YourName" maxLength={20} /></div>
-                    <div style={{ flex: 1 }}><Field label="#ID" value={regTag} onChange={v => setRegTag(v.toUpperCase())} placeholder="AB12" maxLength={4} /></div>
+                    <div style={{ flex: 1 }}><Field label="First Name" value={regName} onChange={setRegName} placeholder="First Name" maxLength={20} /></div>
+                    <div style={{ flex: 1 }}><Field label="Last Name" value={regTag} onChange={setRegTag} placeholder="Last Name" maxLength={20} /></div>
                   </div>
-                  <p className="field-hint">Name must be 3–20 characters: letters, numbers, or underscore.</p>
-                  <p className="field-hint">Tag must be exactly 4 uppercase letters or digits.</p>
-                  {usernameHint(regName, regTag)}
-                  <button className="btn-gold" onClick={handleOAuthUsername} disabled={loading || !regName || regTag.length < 4}>
-                    {loading ? 'Saving…' : 'Set Username & Play 🎮'}
+                  <Field label="Nickname" value={guestName} onChange={setGuestName} placeholder="CoolNickname" maxLength={20} />
+                  <div className="input-row">
+                    <div style={{ flex: 1 }}>
+                      <Field label="DOB (YYYY-MM-DD)" type="date" value={dob} onChange={setDob} placeholder="YYYY-MM-DD" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="input-group">
+                        <label>Gender</label>
+                        <select value={gender} onChange={e => setGender(e.target.value)} style={{ width: '100%', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', color: '#F0F4FF', padding: '13px 15px', borderRadius: '13px', fontSize: '15px', outline: 'none' }}>
+                          <option value="">Select Gender</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <CountrySelect value={countryId} onChange={setCountryId} />
+                  <p className="field-hint">Please verify your details above.</p>
+                  <button className="btn-gold" onClick={handleOAuthUsername} disabled={loading || !regName || !guestName}>
+                    {loading ? 'Saving…' : 'Complete Profile & Play 🎮'}
                   </button>
                 </div>
               )}

@@ -1,4 +1,4 @@
-import { getUserFromRequest, validateName, validateTag, formatUsername, signJWT, setAuthCookie } from '../../../lib/auth';
+import { getUserFromRequest, signJWT, setAuthCookie, buildRegisteredJWTPayload } from '../../../lib/auth';
 import { getPool } from '../../../lib/db';
 
 export default async function handler(req, res) {
@@ -7,110 +7,59 @@ export default async function handler(req, res) {
   const decoded = getUserFromRequest(req);
   if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { displayName, tag } = req.body || {};
-  if (!displayName || !tag || !validateName(displayName) || !validateTag(tag)) {
-    return res.status(400).json({ error: 'Username must be 3-20 letters, digits or underscore and tag must be 4 alphanumeric uppercase characters.' });
-  }
-
-  const upperTag = tag.toUpperCase();
   const pool = getPool();
 
   try {
     if (decoded.type === 'guest') {
+      const { nickname } = req.body || {};
+      if (!nickname) return res.status(400).json({ error: 'Nickname is required.' });
+
       const guestSessionId = decoded.guestSessionId;
-      if (!guestSessionId) return res.status(401).json({ error: 'Unauthorized' });
-
-      const [existingUser] = await pool.query(
-        'SELECT id FROM users WHERE display_name = ? AND tag = ?',
-        [displayName, upperTag]
+      const [existing] = await pool.query(
+        'SELECT id FROM guest_sessions WHERE nickname = ? AND id <> ? AND expires_at > NOW()',
+        [nickname, guestSessionId]
       );
-      if (existingUser.length) {
-        return res.status(409).json({ error: `${formatUsername(displayName, upperTag)} is already taken.` });
-      }
-
-      const [existingGuest] = await pool.query(
-        'SELECT id FROM guest_sessions WHERE display_name = ? AND tag = ? AND expires_at > NOW() AND id <> ?',
-        [displayName, upperTag, guestSessionId]
-      );
-      if (existingGuest.length) {
-        return res.status(409).json({ error: `${formatUsername(displayName, upperTag)} is currently used by another guest.` });
-      }
+      if (existing.length) return res.status(409).json({ error: 'Nickname already taken by another guest.' });
 
       const [result] = await pool.query(
-        'UPDATE guest_sessions SET display_name = ?, tag = ? WHERE id = ? AND expires_at > NOW()',
-        [displayName, upperTag, guestSessionId]
+        'UPDATE guest_sessions SET nickname = ? WHERE id = ? AND expires_at > NOW()',
+        [nickname, guestSessionId]
       );
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'Guest session not found or expired.' });
-      }
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'Guest session not found or expired.' });
 
       const token = signJWT({
         type: 'guest',
         guestSessionId,
-        username: formatUsername(displayName, upperTag),
-        display_name: displayName,
-        tag: upperTag,
+        nickname,
       });
       setAuthCookie(res, token);
-      return res.json({
-        ok: true,
-        user: {
-          type: 'guest',
-          username: formatUsername(displayName, upperTag),
-          display_name: displayName,
-          tag: upperTag,
-          guestSessionId,
-        },
-      });
+      return res.json({ ok: true, user: { type: 'guest', nickname, guestSessionId } });
     }
 
     if (decoded.type === 'registered') {
+      const { firstName, lastName, nickname } = req.body || {};
+      if (!firstName || !nickname) return res.status(400).json({ error: 'First name and nickname are required.' });
+
       const userId = decoded.userId;
-      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-      const [existingUser] = await pool.query(
-        'SELECT id FROM users WHERE display_name = ? AND tag = ? AND id <> ?',
-        [displayName, upperTag, userId]
-      );
-      if (existingUser.length) {
-        return res.status(409).json({ error: `${formatUsername(displayName, upperTag)} is already taken.` });
-      }
-
-      const [existingGuest] = await pool.query(
-        'SELECT id FROM guest_sessions WHERE display_name = ? AND tag = ? AND expires_at > NOW()',
-        [displayName, upperTag]
-      );
-      if (existingGuest.length) {
-        return res.status(409).json({ error: `${formatUsername(displayName, upperTag)} is currently used by a guest.` });
-      }
 
       const [result] = await pool.query(
-        'UPDATE users SET display_name = ?, tag = ? WHERE id = ?',
-        [displayName, upperTag, userId]
+        'UPDATE users SET first_name = ?, last_name = ?, nickname = ? WHERE id = ?',
+        [firstName, lastName || null, nickname, userId]
       );
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'User not found.' });
-      }
 
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'User not found.' });
+
+      const [rows] = await pool.query(
+        'SELECT id, first_name, last_name, nickname, email, token_version FROM users WHERE id = ?',
+        [userId]
+      );
+      const user = rows[0];
       const token = signJWT({
-        type: 'registered',
-        userId,
-        username: formatUsername(displayName, upperTag),
-        display_name: displayName,
-        tag: upperTag,
-        tokenVersion: decoded.tokenVersion || 0,
+        ...buildRegisteredJWTPayload(user),
+        mustResetPassword: !!decoded.mustResetPassword,
       });
       setAuthCookie(res, token);
-      return res.json({
-        ok: true,
-        user: {
-          type: 'registered',
-          id: userId,
-          username: formatUsername(displayName, upperTag),
-          display_name: displayName,
-          tag: upperTag,
-        },
-      });
+      return res.json({ ok: true });
     }
 
     return res.status(400).json({ error: 'Unsupported user type.' });

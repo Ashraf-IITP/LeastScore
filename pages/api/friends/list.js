@@ -1,5 +1,5 @@
 import { getPool } from '../../../lib/db';
-import { getUserFromRequest } from '../../../lib/auth';
+import { getUserFromRequest, buildDisplayName } from '../../../lib/auth';
 import { getFriendsByUserId } from '../../../lib/friends';
 import { isOnline } from '../../../lib/online';
 
@@ -17,11 +17,11 @@ export default async function handler(req, res) {
     const pool = getPool();
     const friends = await getFriendsByUserId(pool, user.userId);
     const formatted = friends.map(friend => ({
-      username: `${friend.display_name}#${friend.tag}`,
-      displayName: friend.display_name,
-      tag: friend.tag,
-      online: isOnline(friend.id),
       userId: friend.id,
+      username: buildDisplayName(friend.first_name, friend.last_name, friend.nickname),
+      displayName: friend.nickname,
+      email: friend.email,
+      online: isOnline(friend.id),
     }));
 
     return res.status(200).json({ friends: formatted });

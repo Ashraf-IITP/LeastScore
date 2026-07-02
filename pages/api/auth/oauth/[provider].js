@@ -9,6 +9,13 @@ export default function handler(req, res) {
   const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
   const cookies = [`oauth_state=${state}; HttpOnly; Path=/; Max-Age=300; SameSite=Lax`];
 
+  // Track whether the request comes from Capacitor (mobile=1 query param)
+  // so the callback can redirect to the custom URL scheme instead of the web app.
+  const isMobile = req.query.mobile === '1';
+  cookies.push(isMobile
+    ? 'oauth_mobile=1; HttpOnly; Path=/; Max-Age=300; SameSite=Lax'
+    : 'oauth_mobile=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
+
   const { upgradeGuestSessionId, upgradeGuestName, upgradeGuestTag } = req.query;
   if (upgradeGuestSessionId) {
     const payload = encodeURIComponent(JSON.stringify({

@@ -1,5 +1,5 @@
 import { getPool } from '../../../lib/db';
-import { getUserFromRequest } from '../../../lib/auth';
+import { getUserFromRequest, buildDisplayName } from '../../../lib/auth';
 import { respondFriendRequest } from '../../../lib/friends';
 
 export default async function handler(req, res) {
@@ -24,11 +24,13 @@ export default async function handler(req, res) {
     if (global.io && action === 'accept') {
       const { getSocketIds } = require('../../../lib/online');
       const [accepterRows] = await pool.query(
-        'SELECT display_name, tag FROM users WHERE id = ?',
+        'SELECT first_name, last_name, nickname FROM users WHERE id = ?',
         [user.userId]
       );
       const accepter = accepterRows[0];
-      const accepterUsername = accepter ? `${accepter.display_name}#${accepter.tag}` : user.username;
+      const accepterUsername = accepter
+        ? buildDisplayName(accepter.first_name, accepter.last_name, accepter.nickname)
+        : 'Friend';
 
       const requesterSockets = getSocketIds(result.requesterId);
       if (requesterSockets) {

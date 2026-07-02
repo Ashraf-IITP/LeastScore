@@ -13,13 +13,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { username } = req.body;
-    if (!username || typeof username !== 'string') {
-      return res.status(400).json({ error: 'Username is required' });
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Email is required' });
     }
 
     const pool = getPool();
-    const recipient = await sendFriendRequest(pool, user.userId, username.trim());
+    const recipient = await sendFriendRequest(pool, user.userId, email.trim());
     
     if (global.io) {
       const { getSocketIds } = require('../../../lib/online');
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       }
     }
 
-    return res.status(200).json({ message: `Friend request sent to ${recipient.display_name}#${recipient.tag}` });
+    return res.status(200).json({ message: `Friend request sent to ${recipient.nickname} (${recipient.first_name} ${recipient.last_name})` });
   } catch (error) {
     return res.status(400).json({ error: error.message || 'Unable to send friend request' });
   }

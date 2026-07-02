@@ -4,12 +4,14 @@ import Head from 'next/head';
 import { loadSoundSettings, saveSoundSettings, DEFAULT_SOUND_SETTINGS } from '../lib/soundSettings';
 import { playBGM, setBGMVolume } from '../lib/bgm';
 import { loadTheme, saveTheme, applyTheme, resolveTheme } from '../lib/themeSettings';
+import { apiFetch } from '../lib/apiFetch';
 
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [displayName, setDisplayName] = useState('');
-  const [tag, setTag] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [nickname, setNickname] = useState('');
   const [authProvider, setAuthProvider] = useState('');
   const [soundSettings, setSoundSettings] = useState(DEFAULT_SOUND_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -74,15 +76,16 @@ export default function SettingsPage() {
   }, [soundSettings.homeVolume]);
 
   useEffect(() => {
-    fetch('/api/auth/me')
+    apiFetch('/api/auth/me')
       .then((res) => res.json())
       .then((data) => {
         if (!data?.user) {
           router.replace('/login');
           return;
         }
-        setDisplayName(data.user.display_name || '');
-        setTag((data.user.tag || '').toUpperCase());
+        setFirstName(data.user.first_name || '');
+        setLastName(data.user.last_name || '');
+        setNickname(data.user.nickname || '');
         setAuthProvider(data.user.auth_provider || '');
         setSoundSettings(loadSoundSettings());
         setThemePref(loadTheme());
@@ -143,7 +146,9 @@ export default function SettingsPage() {
                 <p className="settings-section-title">Profile</p>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: resolvedTheme === 'light' ? '#FFFFFF' : 'rgba(0,0,0,0.35)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
                   <div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: resolvedTheme === 'light' ? '#1E4D32' : '#F0F4FF' }}>{displayName} <span style={{ color: '#8896A7' }}>#{tag}</span></div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: resolvedTheme === 'light' ? '#1E4D32' : '#F0F4FF' }}>
+                      {`${firstName} ${lastName}`.trim() || nickname}
+                    </div>
                   </div>
                   <button onClick={() => router.push('/change-name')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
                     Edit

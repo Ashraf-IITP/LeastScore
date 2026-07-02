@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LeastScore</string>
+    <string name="title_activity_main">LeastScore</string>
+    <string name="package_name">cc.altius.leastscore</string>
+    <string name="custom_url_scheme">cc.altius.leastscore</string>
+</resources>

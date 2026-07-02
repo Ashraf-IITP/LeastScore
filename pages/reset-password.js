@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { apiFetch } from '../lib/apiFetch';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function ResetPasswordPage() {
 
   // Guard: only users with mustResetPassword flag may access this page
   useEffect(() => {
-    fetch('/api/auth/me')
+    apiFetch('/api/auth/me')
       .then(r => r.json())
       .then(d => {
         if (!d.user || d.user.type !== 'registered') {
@@ -27,7 +28,7 @@ export default function ResetPasswordPage() {
           router.replace('/');
           return;
         }
-        setUsername(d.user.username || '');
+        setUsername(d.user.displayName || d.user.nickname || d.user.email || '');
         setChecking(false);
       })
       .catch(() => router.replace('/login'));
@@ -43,9 +44,8 @@ export default function ResetPasswordPage() {
     }
     setLoading(true);
     try {
-      const r = await fetch('/api/auth/reset-password', {
+      const r = await apiFetch('/api/auth/reset-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ newPassword, confirmPassword }),
       });
       const d = await r.json();

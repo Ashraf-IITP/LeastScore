@@ -1,7 +1,7 @@
 // pages/api/auth/forgot-password.js
 // Generates a random temp password, emails it, and updates the user's hash.
 import { getPool } from '../../../lib/db';
-import { hashPassword } from '../../../lib/auth';
+import { hashPassword, buildDisplayName } from '../../../lib/auth';
 import { sendMail } from '../../../lib/mailer';
 
 /** Generate a readable random password like "Ax7#mP2k" */
@@ -27,14 +27,12 @@ export default async function handler(req, res) {
   try {
     const pool = getPool();
 
-    // Find a local account with this email
     const [rows] = await pool.query(
-      `SELECT id, display_name, tag, auth_provider
+      `SELECT id, first_name, last_name, nickname, auth_provider
        FROM users WHERE LOWER(email) = ? AND auth_provider = 'local' LIMIT 1`,
       [normalizedEmail]
     );
 
-    // Always return success to prevent email enumeration attacks
     if (!rows.length) {
       return res.json({ ok: true });
     }
@@ -43,14 +41,12 @@ export default async function handler(req, res) {
     const tempPassword = generateTempPassword();
     const newHash = await hashPassword(tempPassword);
 
-    // Update hash, bump token_version (invalidates all sessions), set must_reset_password
     await pool.query(
       `UPDATE users SET password_hash = ?, token_version = token_version + 1, must_reset_password = 1 WHERE id = ?`,
       [newHash, user.id]
     );
 
-    // Send email
-    const username = `${user.display_name}#${user.tag}`;
+    const displayName = buildDisplayName(user.first_name, user.last_name, user.nickname);
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
     await sendMail({
@@ -65,9 +61,9 @@ export default async function handler(req, res) {
               <p style="margin:8px 0 0;color:#8896A7;font-size:13px">Password Reset</p>
             </div>
             <div style="padding:32px">
-              <p style="color:#A8B4C2;font-size:15px;margin:0 0 8px">Hi <strong style="color:#F0F4FF">${user.display_name}</strong>,</p>
+              <p style="color:#A8B4C2;font-size:15px;margin:0 0 8px">Hi <strong style="color:#F0F4FF">${displayName}</strong>,</p>
               <p style="color:#A8B4C2;font-size:14px;line-height:1.6;margin:0 0 24px">
-                A temporary password has been generated for your account <strong style="color:#FFC857">${username}</strong>.
+                A temporary password has been generated for your account <strong style="color:#FFC857">${normalizedEmail}</strong>.
                 Use it to log in, then change your password from Settings right away.
               </p>
               <div style="background:rgba(255,200,87,0.08);border:1px solid rgba(255,200,87,0.25);border-radius:14px;padding:20px;text-align:center;margin-bottom:24px">
@@ -85,7 +81,7 @@ export default async function handler(req, res) {
           </div>
         </div>
       `,
-      text: `Hi ${user.display_name},\n\nYour temporary LeastScore password for ${username} is:\n\n${tempPassword}\n\nLog in at ${baseUrl}/login then change your password from Settings.\n\nIf you didn't request this, contact support.`,
+      text: `Hi ${displayName},\n\nYour temporary LeastScore password for ${normalizedEmail} is:\n\n${tempPassword}\n\nLog in at ${baseUrl}/login then change your password from Settings.\n\nIf you didn't request this, contact support.`,
     });
 
     return res.json({ ok: true });

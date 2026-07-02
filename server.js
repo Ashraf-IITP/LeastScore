@@ -7,7 +7,7 @@ const next = require('next');
 const dev = process.env.NODE_ENV !== 'production';
 require('@next/env').loadEnvConfig(process.cwd(), dev);
 
-const { verifyJWT, parseUsername } = require('./lib/auth');
+const { verifyJWT, buildDisplayName } = require('./lib/auth');
 const { getPool } = require('./lib/db');
 const { addOnline, removeOnline, getSocketIds, isOnline } = require('./lib/online');
 const matchHistory = require('./lib/matchHistory');
@@ -186,64 +186,75 @@ nextApp.prepare().then(() => {
   // Guest session expiry timers: guestSessionId -> timeoutHandle
   const guestTimers = new Map();
 
-  // Party management: creatorUsername -> { members: [{username, userId, socketId}], invited: Set(username) }
+  // Party management: creatorUserId -> { members: [{userId, displayName, socketId}], invited: Set(userId) }
   const parties = new Map();
-  // Map of username -> creatorUsername (to find which party a user belongs to)
-  const userToPartyCreator = new Map();
-  const partyDisconnectTimers = new Map(); // username -> timeoutHandle
-  const tutorialPresence = new Map(); // username -> { socketId, mode, updatedAt }
+  const userToPartyCreator = new Map(); // userId -> creatorUserId
+  const partyDisconnectTimers = new Map(); // userId -> timeoutHandle
+  const tutorialPresence = new Map(); // userId | `g:${guestSessionId}` -> { socketId, mode, updatedAt }
   const TUTORIAL_PRESENCE_TTL_MS = 10 * 60 * 1000;
+
+  function toPartyMemberView(member) {
+    return { userId: member.userId, username: member.displayName };
+  }
+
+  function emitPartyUpdate(party, creatorUserId) {
+    const memberList = party.members.map(toPartyMemberView);
+    const creatorMember = party.members.find(m => m.userId === creatorUserId);
+    const creatorDisplay = creatorMember?.displayName || 'Leader';
+    party.members.forEach(m => {
+      if (m.socketId) {
+        io.to(m.socketId).emit('partyUpdate', {
+          creatorUserId,
+          creator: creatorDisplay,
+          members: memberList,
+        });
+      }
+    });
+  }
 
   function clearExpiredTutorialPresence() {
     const now = Date.now();
-    for (const [username, presence] of tutorialPresence.entries()) {
+    for (const [key, presence] of tutorialPresence.entries()) {
       if (!presence || now - presence.updatedAt > TUTORIAL_PRESENCE_TTL_MS) {
-        tutorialPresence.delete(username);
+        tutorialPresence.delete(key);
       }
     }
   }
 
-  function isUserInTutorial(username) {
-    if (!username) return false;
-    clearExpiredTutorialPresence();
-    return tutorialPresence.has(username);
+  function tutorialPresenceKey(socket) {
+    if (socket.userId) return socket.userId;
+    if (socket.guestSessionId) return `g:${socket.guestSessionId}`;
+    return null;
   }
 
-  async function revokePendingPartyInvitesForParty(creatorName) {
-    const party = parties.get(creatorName);
+  function isUserInTutorial(presenceKey) {
+    if (!presenceKey) return false;
+    clearExpiredTutorialPresence();
+    return tutorialPresence.has(presenceKey);
+  }
+
+  async function revokePendingPartyInvitesForParty(creatorUserId) {
+    const party = parties.get(creatorUserId);
     if (!party || party.invited.size === 0) return;
 
     const pending = [...party.invited];
     party.invited.clear();
 
-    try {
-      const pool = getPool();
-      for (const invitedUsername of pending) {
-        const parsed = parseUsername(invitedUsername);
-        if (!parsed) continue;
-        const [rows] = await pool.query(
-          'SELECT id FROM users WHERE display_name = ? AND tag = ?',
-          [parsed.name, parsed.tag]
-        );
-        const user = rows[0];
-        if (!user) continue;
-        const socketIds = getSocketIds(user.id);
-        if (socketIds) {
-          for (const sid of socketIds) {
-            io.to(sid).emit('partyInviteRevoked');
-          }
+    for (const invitedUserId of pending) {
+      const socketIds = getSocketIds(invitedUserId);
+      if (socketIds) {
+        for (const sid of socketIds) {
+          io.to(sid).emit('partyInviteRevoked');
         }
       }
-    } catch (e) {
-      console.error('revokePendingPartyInvitesForParty:', e.message);
     }
   }
 
-  async function revokePendingPartyInvitesForMember(username) {
-    if (!username) return;
-    const creatorName = userToPartyCreator.get(username);
-    if (!creatorName) return;
-    await revokePendingPartyInvitesForParty(creatorName);
+  async function revokePendingPartyInvitesForMember(userId) {
+    if (!userId) return;
+    const creatorUserId = userToPartyCreator.get(userId);
+    if (!creatorUserId) return;
+    await revokePendingPartyInvitesForParty(creatorUserId);
   }
 
   function pullSocketFromWaitingAreas(targetSocket) {
@@ -404,17 +415,21 @@ nextApp.prepare().then(() => {
   }
 
   function ensureSoloParty(socket) {
-    if (!socket.username || !socket.userId) return;
+    if (!socket.userId) return;
 
-    // Only create if not already in a party
-    if (!userToPartyCreator.has(socket.username)) {
-      const creatorName = socket.username;
-      parties.set(creatorName, {
-        members: [{ username: socket.username, userId: socket.userId, socketId: socket.id }],
-        invited: new Set()
+    if (!userToPartyCreator.has(socket.userId)) {
+      const creatorUserId = socket.userId;
+      const displayName = socket.displayName || socket.username || 'Player';
+      parties.set(creatorUserId, {
+        members: [{ userId: socket.userId, displayName, socketId: socket.id }],
+        invited: new Set(),
       });
-      userToPartyCreator.set(socket.username, creatorName);
-      socket.emit('partyUpdate', { creator: creatorName, members: [{ username: socket.username }] });
+      userToPartyCreator.set(socket.userId, creatorUserId);
+      socket.emit('partyUpdate', {
+        creatorUserId,
+        creator: displayName,
+        members: [{ userId: socket.userId, username: displayName }],
+      });
     }
   }
 
@@ -438,11 +453,17 @@ nextApp.prepare().then(() => {
       console.log(`[GuestAuth] JWT verified. User type: ${decoded?.type}, guestSessionId: ${decoded?.guestSessionId}, username: ${decoded?.username}`);
       if (decoded?.type === 'guest' && decoded.guestSessionId) {
         socket.guestSessionId = decoded.guestSessionId;
+        socket.username = decoded.nickname || decoded.username || 'Guest';
+        socket.userType = 'guest';
         refreshGuestSession(decoded.guestSessionId, socket.id);
       }
-      if (decoded?.type === 'registered' && decoded.username) {
-        socket.username = decoded.username;
+      if (decoded?.type === 'registered' && decoded.userId) {
         socket.userId = decoded.userId;
+        socket.displayName = decoded.displayName
+          || buildDisplayName(decoded.first_name, decoded.last_name, decoded.nickname)
+          || decoded.email
+          || 'Player';
+        socket.username = socket.displayName;
         socket.userType = decoded.type;
         const wasAlreadyOnline = isOnline(decoded.userId);
         addOnline(decoded.userId, socket.id);
@@ -450,26 +471,24 @@ nextApp.prepare().then(() => {
           io.emit('friendStatusUpdate', { userId: decoded.userId, online: true });
         }
 
-        // Update party socket if user was in a party
-        const creatorName = userToPartyCreator.get(decoded.username);
-        if (creatorName) {
-          const party = parties.get(creatorName);
+        const creatorUserId = userToPartyCreator.get(decoded.userId);
+        if (creatorUserId) {
+          const party = parties.get(creatorUserId);
           if (party) {
-            const member = party.members.find(m => m.username === decoded.username);
+            const member = party.members.find(m => m.userId === decoded.userId);
             if (member) {
               member.socketId = socket.id;
-              
-              if (partyDisconnectTimers.has(decoded.username)) {
-                clearTimeout(partyDisconnectTimers.get(decoded.username));
-                partyDisconnectTimers.delete(decoded.username);
+              member.displayName = socket.displayName;
+
+              if (partyDisconnectTimers.has(decoded.userId)) {
+                clearTimeout(partyDisconnectTimers.get(decoded.userId));
+                partyDisconnectTimers.delete(decoded.userId);
               }
 
-              // Sync the reconnected user's local state
-              socket.emit('partyUpdate', { creator: creatorName, members: party.members.map(m => ({ username: m.username })) });
+              emitPartyUpdate(party, creatorUserId);
             }
           }
         } else {
-          // New connection with no party: ensure solo party
           ensureSoloParty(socket);
         }
       }
@@ -479,31 +498,28 @@ nextApp.prepare().then(() => {
 
     // Immediately check if this socket is returning to an active match and prompt to resume/exit
     try {
-      if (socket.guestSessionId || socket.username) {
-        checkActiveReconnection(socket.username);
+      if (socket.guestSessionId || socket.userId) {
+        checkActiveReconnection();
       }
     } catch (e) { console.error('active match check failed:', e.message); }
 
     socket.on('tutorialPresence', (state = {}) => {
-      const username = socket.username || (typeof state.username === 'string' ? state.username.trim() : '');
-      if (!username) return;
+      const presenceKey = tutorialPresenceKey(socket);
+      if (!presenceKey) return;
 
       if (state.inTutorial) {
-        tutorialPresence.set(username, {
+        tutorialPresence.set(presenceKey, {
           socketId: socket.id,
           mode: typeof state.mode === 'string' ? state.mode : 'tutorial',
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
         });
       } else {
-        tutorialPresence.delete(username);
+        tutorialPresence.delete(presenceKey);
       }
     });
 
     // Helper: check if player is already in an active game and reconnect them
-    function checkActiveReconnection(username) {
-      if (!username && socket.username) {
-        username = socket.username;
-      }
+    function checkActiveReconnection() {
 
       // First, if this socket is a guest, try to match by guestSessionId and prompt for resume
       if (socket.guestSessionId) {
@@ -525,10 +541,10 @@ nextApp.prepare().then(() => {
         }
       }
 
-      if (username) {
+      if (socket.userId) {
         for (const [roomId, room] of Object.entries(games)) {
           if (room.gameState && !room.gameState.gameOver) {
-            const pIndex = room.players.findIndex(p => p.username === username);
+            const pIndex = room.players.findIndex(p => p.userId === socket.userId);
             if (pIndex !== -1) {
               if (room.players[pIndex].hasExited) continue;
               // If player was eliminated due to long disconnect, do not allow rejoin
@@ -582,7 +598,7 @@ nextApp.prepare().then(() => {
       if (!room) return;
 
       room.players.forEach(player => {
-        if (player.username) revokePendingPartyInvitesForMember(player.username);
+        if (player.userId) revokePendingPartyInvitesForMember(player.userId);
       });
 
       // Randomize turn order for online matches so join order does not decide first turn.
@@ -592,6 +608,9 @@ nextApp.prepare().then(() => {
       room.gameState = initializeGame(room.players.length);
       room.gameState.players.forEach((p, idx) => {
         p.username = room.players[idx].username;
+        if (room.players[idx].userId) {
+          p.userId = room.players[idx].userId;
+        }
         if (room.players[idx].guestSessionId) {
           p.guestSessionId = room.players[idx].guestSessionId;
         }
@@ -615,9 +634,8 @@ nextApp.prepare().then(() => {
       let pIndex = -1;
       if (socket.guestSessionId) {
         pIndex = room.players.findIndex(p => p.guestSessionId === socket.guestSessionId);
-      } else {
-        const currentUsername = socket.username || socket.handshake.auth?.username || socket.handshake.query?.username;
-        pIndex = room.players.findIndex(p => p.username && currentUsername && p.username === currentUsername);
+      } else if (socket.userId) {
+        pIndex = room.players.findIndex(p => p.userId === socket.userId);
       }
       if (pIndex === -1) return;
 
@@ -675,9 +693,8 @@ nextApp.prepare().then(() => {
       let pIndex = -1;
       if (socket.guestSessionId) {
         pIndex = room.players.findIndex(p => p.guestSessionId === socket.guestSessionId);
-      } else {
-        const currentUsername = socket.username || socket.handshake.auth?.username || socket.handshake.query?.username;
-        pIndex = room.players.findIndex(p => p.username && currentUsername && p.username === currentUsername);
+      } else if (socket.userId) {
+        pIndex = room.players.findIndex(p => p.userId === socket.userId);
       }
       if (pIndex === -1) return;
 
@@ -734,31 +751,31 @@ nextApp.prepare().then(() => {
       socket.emit('gameEnded', getPlayerGameState(room.gameState, pIndex), pIndex);
     });
 
-    socket.on('joinRoom', (roomId, username) => {
-      if (checkActiveReconnection(username)) return;
+    socket.on('joinRoom', (roomId) => {
+      if (checkActiveReconnection()) return;
 
+      const displayName = socket.displayName || socket.username || 'Player';
       socket.join(roomId);
-      socketToRoom.set(socket.id, roomId); // Track this socket's room
+      socketToRoom.set(socket.id, roomId);
       if (!games[roomId]) {
         games[roomId] = { players: [], gameState: null };
       }
       const room = games[roomId];
       if (room.players.length < 2) {
-        const playerEntry = { username: username, socketId: socket.id, queueKey: getQueueKey(username) };
+        const playerEntry = { username: displayName, socketId: socket.id, queueKey: getQueueKey() };
         if (socket.guestSessionId) playerEntry.guestSessionId = socket.guestSessionId;
         if (socket.userType === 'registered' && socket.userId) playerEntry.userId = socket.userId;
         room.players.push(playerEntry);
-        socket.emit('joined', room.players.length - 1); // player index
+        socket.emit('joined', room.players.length - 1);
         if (room.players.length === 2) {
           room.players.forEach(player => {
-            if (player.username) revokePendingPartyInvitesForMember(player.username);
+            if (player.userId) revokePendingPartyInvitesForMember(player.userId);
           });
-          // Start game
           const { initializeGame } = require('./lib/game');
           room.gameState = initializeGame();
-          // Add usernames to players
           room.gameState.players.forEach((p, idx) => {
             p.username = room.players[idx].username;
+            if (room.players[idx].userId) p.userId = room.players[idx].userId;
             if (room.players[idx].guestSessionId) p.guestSessionId = room.players[idx].guestSessionId;
           });
           // Send filtered game state to each player
@@ -799,7 +816,7 @@ nextApp.prepare().then(() => {
         }
       });
 
-      if (socket.username) revokePendingPartyInvitesForMember(socket.username);
+      if (socket.userId) revokePendingPartyInvitesForMember(socket.userId);
 
       socket.join(roomId);
       // Send the FULL game state (do not use getPlayerGameState to hide cards)
@@ -888,7 +905,7 @@ nextApp.prepare().then(() => {
       socketToRoom.set(socket.id, roomId);
       socket.join(roomId);
 
-      if (socket.username) revokePendingPartyInvitesForMember(socket.username);
+      if (socket.userId) revokePendingPartyInvitesForMember(socket.userId);
 
       matchHistory.startMatch(games[roomId], roomId).then(() => {
         socket.emit('gameStart', gameState, humanPlayerIndex, roomId);
@@ -1130,11 +1147,11 @@ nextApp.prepare().then(() => {
       }, 5000);
     }
 
-    socket.on('joinQueue', (username) => {
-      if (checkActiveReconnection(username)) return;
+    socket.on('joinQueue', () => {
+      if (checkActiveReconnection()) return;
 
-      const queueKey = getQueueKey(username);
-      const resolvedUsername = resolveQueueUsername(username);
+      const queueKey = getQueueKey();
+      const resolvedUsername = socket.displayName || socket.username || 'Player';
 
       const currentRoomId = socketToRoom.get(socket.id);
       if (currentRoomId && currentRoomId.startsWith('online_')) {
@@ -1220,59 +1237,53 @@ nextApp.prepare().then(() => {
     });
 
     socket.on('createLobby', async (payload, targetPlayers) => {
-      let username = payload;
       let requestedPlayers = targetPlayers;
-      let partyMembers = [];
+      let partyMemberIds = [];
 
       if (payload && typeof payload === 'object') {
-        username = payload.username;
         requestedPlayers = payload.targetPlayers;
-        if (Array.isArray(payload.partyMembers)) {
-          partyMembers = payload.partyMembers.map(String).map(p => p.trim()).filter(Boolean);
+        if (Array.isArray(payload.partyMemberIds)) {
+          partyMemberIds = payload.partyMemberIds
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id) && id > 0);
         }
       }
 
-      if (checkActiveReconnection(username)) return;
+      if (checkActiveReconnection()) return;
 
-      const creatorUsername = resolveQueueUsername(username);
-      const uniquePartyUsers = [...new Set(partyMembers.filter(name => name !== creatorUsername))];
+      const creatorDisplayName = socket.displayName || socket.username || 'Player';
+      const uniquePartyMemberIds = [...new Set(partyMemberIds.filter((id) => id !== socket.userId))];
       const invitedPlayers = [];
       let effectiveTargetPlayers = Number(requestedPlayers) || 2;
 
-      if (uniquePartyUsers.length > 0) {
+      if (uniquePartyMemberIds.length > 0) {
         if (socket.userType !== 'registered') {
           socket.emit('error', 'Party play requires a registered account.');
           return;
         }
 
-        const tutorialPartyMembers = uniquePartyUsers.filter(isUserInTutorial);
+        const tutorialPartyMembers = uniquePartyMemberIds.filter((memberId) => isUserInTutorial(memberId));
         if (tutorialPartyMembers.length > 0) {
-          const memberList = tutorialPartyMembers.join(', ');
-          const playerLabel = tutorialPartyMembers.length === 1 ? 'is' : 'are';
-          socket.emit('error', `${memberList} ${playerLabel} inside Tutorials, ask them to leave before creating the lobby.`);
+          socket.emit('error', 'A party member is inside Tutorials. Ask them to leave before creating the lobby.');
           return;
         }
 
         const pool = getPool();
-        for (const partyUsername of uniquePartyUsers) {
-          const parsed = parseUsername(partyUsername);
-          if (!parsed) {
-            socket.emit('error', `Invalid friend username: ${partyUsername}`);
-            return;
-          }
+        for (const friendUserId of uniquePartyMemberIds) {
           const [rows] = await pool.query(
-            'SELECT id, display_name, tag FROM users WHERE display_name = ? AND tag = ?',
-            [parsed.name, parsed.tag]
+            'SELECT id, first_name, last_name, nickname FROM users WHERE id = ?',
+            [friendUserId]
           );
           const friendUser = rows[0];
           if (!friendUser) {
-            socket.emit('error', `Friend ${partyUsername} is not available for party play.`);
+            socket.emit('error', 'A selected party member is not available for party play.');
             return;
           }
 
+          const friendDisplayName = buildDisplayName(friendUser.first_name, friendUser.last_name, friendUser.nickname);
           const friendSocketIds = getSocketIds(friendUser.id);
           if (!friendSocketIds || friendSocketIds.size === 0) {
-            socket.emit('error', `Friend ${partyUsername} is offline.`);
+            socket.emit('error', `${friendDisplayName} is offline.`);
             return;
           }
 
@@ -1280,14 +1291,17 @@ nextApp.prepare().then(() => {
           const currentRoomId = socketToRoom.get(friendSocketId);
           if (currentRoomId) {
             const room = games[currentRoomId];
-            // Only block if the room exists and is NOT a finished game
             if (room && (!room.gameState || !room.gameState.gameOver)) {
-              socket.emit('error', `Friend ${partyUsername} is already in another match or lobby.`);
+              socket.emit('error', `${friendDisplayName} is already in another match or lobby.`);
               return;
             }
           }
 
-          invitedPlayers.push({ username: `${friendUser.display_name}#${friendUser.tag}`, socketId: friendSocketId, userId: friendUser.id });
+          invitedPlayers.push({
+            username: friendDisplayName,
+            socketId: friendSocketId,
+            userId: friendUser.id,
+          });
         }
 
         effectiveTargetPlayers = Math.max(effectiveTargetPlayers, invitedPlayers.length + 1);
@@ -1299,13 +1313,17 @@ nextApp.prepare().then(() => {
 
       socket.join(roomId);
       socketToRoom.set(socket.id, roomId);
-      const entry = { username: creatorUsername, socketId: socket.id, queueKey: getQueueKey(creatorUsername) };
+      const entry = {
+        username: creatorDisplayName,
+        socketId: socket.id,
+        queueKey: getQueueKey(),
+      };
       if (socket.guestSessionId) entry.guestSessionId = socket.guestSessionId;
       if (socket.userType === 'registered' && socket.userId) entry.userId = socket.userId;
       games[roomId].players.push(entry);
 
-      socket.emit('lobbyCreated', roomId, 1, tp, [creatorUsername]);
-      revokePendingPartyInvitesForMember(creatorUsername);
+      socket.emit('lobbyCreated', roomId, 1, tp, [creatorDisplayName]);
+      if (socket.userId) revokePendingPartyInvitesForMember(socket.userId);
 
       if (invitedPlayers.length > 0) {
         for (const friend of invitedPlayers) {
@@ -1313,7 +1331,12 @@ nextApp.prepare().then(() => {
           if (!friendSocket) continue;
           friendSocket.join(roomId);
           socketToRoom.set(friend.socketId, roomId);
-          const friendEntry = { username: friend.username, socketId: friend.socketId, userId: friend.userId, queueKey: friend.userId ? `u:${friend.userId}` : getQueueKey(friend.username) };
+          const friendEntry = {
+            username: friend.username,
+            socketId: friend.socketId,
+            userId: friend.userId,
+            queueKey: `u:${friend.userId}`,
+          };
           games[roomId].players.push(friendEntry);
           io.to(friend.socketId).emit('partyLobbyJoined', {
             roomId,
@@ -1331,8 +1354,8 @@ nextApp.prepare().then(() => {
       }
     });
 
-    socket.on('joinLobby', (roomId, username) => {
-      if (checkActiveReconnection(username)) return;
+    socket.on('joinLobby', (roomId) => {
+      if (checkActiveReconnection()) return;
 
       if (!games[roomId]) {
         socket.emit('error', 'Lobby not found');
@@ -1345,9 +1368,12 @@ nextApp.prepare().then(() => {
         return;
       }
 
-      const resolvedUsername = resolveQueueUsername(username);
-      const joiningKey = getQueueKey(resolvedUsername);
-      const alreadyInLobby = room.players.some(p => p.queueKey && p.queueKey === joiningKey);
+      const resolvedUsername = socket.displayName || socket.username || 'Player';
+      const joiningKey = getQueueKey();
+      const alreadyInLobby = room.players.some(p => {
+        if (socket.userId && p.userId) return p.userId === socket.userId;
+        return p.queueKey && p.queueKey === joiningKey;
+      });
       if (alreadyInLobby) {
         socket.emit('error', 'You are already in this lobby (possibly from another tab).');
         return;
@@ -1425,20 +1451,22 @@ nextApp.prepare().then(() => {
     });
 
     // ── Party Management ─────────────────────────────────────────────────────
-    socket.on('sendPartyInvite', async (targetUsername) => {
-      if (socket.userType !== 'registered' || !socket.username) {
+    socket.on('sendPartyInvite', async (targetUserId) => {
+      if (socket.userType !== 'registered' || !socket.userId) {
         socket.emit('error', 'Only registered users can use party features.');
         return;
       }
 
-      const parsed = parseUsername(targetUsername);
-      if (!parsed) {
-        socket.emit('error', 'Invalid username format.');
+      const parsedTargetUserId = Number(targetUserId);
+      if (!Number.isFinite(parsedTargetUserId)) {
+        socket.emit('error', 'Invalid friend selected.');
         return;
       }
 
-      // Check if target is online
-      const [rows] = await getPool().query('SELECT id FROM users WHERE display_name = ? AND tag = ?', [parsed.name, parsed.tag]);
+      const [rows] = await getPool().query(
+        'SELECT id, first_name, last_name, nickname FROM users WHERE id = ?',
+        [parsedTargetUserId]
+      );
       const targetUser = rows[0];
       if (!targetUser) {
         socket.emit('error', 'User not found.');
@@ -1453,47 +1481,59 @@ nextApp.prepare().then(() => {
 
       const targetSocketId = [...targetSocketIds][0];
 
-      // Don't invite yourself
-      if (targetSocketId === socket.id) {
+      if (targetUser.id === socket.userId) {
         socket.emit('error', 'You cannot invite yourself.');
         return;
       }
 
-      // If sender is not in a party, create one where they are the creator
-      let creatorName = userToPartyCreator.get(socket.username);
-      if (!creatorName) {
-        creatorName = socket.username;
-        parties.set(creatorName, {
-          members: [{ username: socket.username, userId: socket.userId, socketId: socket.id }],
-          invited: new Set()
+      let creatorUserId = userToPartyCreator.get(socket.userId);
+      if (!creatorUserId) {
+        creatorUserId = socket.userId;
+        parties.set(creatorUserId, {
+          members: [{
+            userId: socket.userId,
+            displayName: socket.displayName || socket.username || 'Player',
+            socketId: socket.id,
+          }],
+          invited: new Set(),
         });
-        userToPartyCreator.set(socket.username, creatorName);
-        // Initial update for the creator
-        socket.emit('partyUpdate', { creator: creatorName, members: [{ username: socket.username }] });
+        userToPartyCreator.set(socket.userId, creatorUserId);
+        emitPartyUpdate(parties.get(creatorUserId), creatorUserId);
       }
-      // Anyone in the party can invite friends
 
-      const party = parties.get(creatorName);
+      const party = parties.get(creatorUserId);
       if (party.members.length >= 8) {
         socket.emit('error', 'Party is full (max 8 members).');
         return;
       }
 
-      if (party.members.some(m => m.username === targetUsername)) {
+      if (party.members.some(m => m.userId === targetUser.id)) {
         socket.emit('error', 'User is already in your party.');
         return;
       }
 
-      party.invited.add(targetUsername);
-      io.to(targetSocketId).emit('partyInviteReceived', { from: socket.username, creator: creatorName });
-      socket.emit('info', `Invitation sent to ${targetUsername}`);
+      party.invited.add(targetUser.id);
+      const creatorMember = party.members.find(m => m.userId === creatorUserId);
+      io.to(targetSocketId).emit('partyInviteReceived', {
+        from: socket.displayName || socket.username,
+        fromUserId: socket.userId,
+        creatorUserId,
+        creator: creatorMember?.displayName || socket.displayName || socket.username,
+      });
+      socket.emit('info', `Invitation sent to ${buildDisplayName(targetUser.first_name, targetUser.last_name, targetUser.nickname)}`);
     });
 
-    socket.on('acceptPartyInvite', (inviterUsername) => {
-      if (!socket.username) return;
+    socket.on('acceptPartyInvite', (creatorUserIdArg) => {
+      if (!socket.userId) return;
 
-      const party = parties.get(inviterUsername);
-      if (!party || !party.invited.has(socket.username)) {
+      const creatorUserId = Number(creatorUserIdArg);
+      if (!Number.isFinite(creatorUserId)) {
+        socket.emit('error', 'Invitation no longer valid.');
+        return;
+      }
+
+      const party = parties.get(creatorUserId);
+      if (!party || !party.invited.has(socket.userId)) {
         socket.emit('error', 'Invitation no longer valid.');
         return;
       }
@@ -1503,116 +1543,106 @@ nextApp.prepare().then(() => {
         return;
       }
 
-      // If user was already in another party, leave it
-      const oldCreator = userToPartyCreator.get(socket.username);
-      if (oldCreator) {
-        const oldParty = parties.get(oldCreator);
+      const oldCreatorUserId = userToPartyCreator.get(socket.userId);
+      if (oldCreatorUserId) {
+        const oldParty = parties.get(oldCreatorUserId);
         if (oldParty) {
-          oldParty.members = oldParty.members.filter(m => m.username !== socket.username);
-          userToPartyCreator.delete(socket.username);
+          oldParty.members = oldParty.members.filter(m => m.userId !== socket.userId);
+          userToPartyCreator.delete(socket.userId);
 
           if (oldParty.members.length === 0) {
-            parties.delete(oldCreator);
+            parties.delete(oldCreatorUserId);
           } else {
-            let newOldCreator = oldCreator;
-            if (oldCreator === socket.username) {
-              newOldCreator = oldParty.members[0].username;
-              parties.delete(oldCreator);
-              parties.set(newOldCreator, oldParty);
-              oldParty.members.forEach(m => userToPartyCreator.set(m.username, newOldCreator));
+            let newOldCreatorUserId = oldCreatorUserId;
+            if (oldCreatorUserId === socket.userId) {
+              newOldCreatorUserId = oldParty.members[0].userId;
+              parties.delete(oldCreatorUserId);
+              parties.set(newOldCreatorUserId, oldParty);
+              oldParty.members.forEach(m => userToPartyCreator.set(m.userId, newOldCreatorUserId));
             }
-            const oldMemberList = oldParty.members.map(mem => ({ username: mem.username }));
-            oldParty.members.forEach(m => {
-              io.to(m.socketId).emit('partyUpdate', { creator: newOldCreator, members: oldMemberList });
-            });
+            emitPartyUpdate(oldParty, newOldCreatorUserId);
           }
         }
       }
 
-      party.invited.delete(socket.username);
-      party.members.push({ username: socket.username, userId: socket.userId, socketId: socket.id });
-      userToPartyCreator.set(socket.username, inviterUsername);
+      party.invited.delete(socket.userId);
+      party.members.push({
+        userId: socket.userId,
+        displayName: socket.displayName || socket.username || 'Player',
+        socketId: socket.id,
+      });
+      userToPartyCreator.set(socket.userId, creatorUserId);
 
-      // Broadcast update to all party members
-      const memberList = party.members.map(m => ({ username: m.username }));
       party.members.forEach(m => {
-        io.to(m.socketId).emit('partyUpdate', { creator: inviterUsername, members: memberList });
-        if (m.username !== socket.username) {
-          io.to(m.socketId).emit('partyMemberJoined', { username: socket.username });
+        if (m.userId !== socket.userId) {
+          io.to(m.socketId).emit('partyMemberJoined', { username: socket.displayName || socket.username });
         }
       });
+      emitPartyUpdate(party, creatorUserId);
 
       pullSocketFromWaitingAreas(socket);
       sendPartyMembersHome(party);
     });
 
     socket.on('leaveParty', () => {
-      if (!socket.username) return;
-      const creatorName = userToPartyCreator.get(socket.username);
-      if (!creatorName) return;
+      if (!socket.userId) return;
+      const creatorUserId = userToPartyCreator.get(socket.userId);
+      if (!creatorUserId) return;
 
-      const party = parties.get(creatorName);
+      const party = parties.get(creatorUserId);
       if (!party) return;
 
-      party.members = party.members.filter(m => m.username !== socket.username);
-      userToPartyCreator.delete(socket.username);
-      if (partyDisconnectTimers.has(socket.username)) {
-        clearTimeout(partyDisconnectTimers.get(socket.username));
-        partyDisconnectTimers.delete(socket.username);
+      party.members = party.members.filter(m => m.userId !== socket.userId);
+      userToPartyCreator.delete(socket.userId);
+      if (partyDisconnectTimers.has(socket.userId)) {
+        clearTimeout(partyDisconnectTimers.get(socket.userId));
+        partyDisconnectTimers.delete(socket.userId);
       }
-      socket.emit('partyUpdate', { creator: null, members: [] });
+      socket.emit('partyUpdate', { creatorUserId: null, creator: null, members: [] });
 
       if (party.members.length === 0) {
-        parties.delete(creatorName);
+        parties.delete(creatorUserId);
       } else {
-        let newCreatorName = creatorName;
-        if (creatorName === socket.username) {
-          newCreatorName = party.members[0].username;
-          parties.delete(creatorName);
-          parties.set(newCreatorName, party);
-          party.members.forEach(m => userToPartyCreator.set(m.username, newCreatorName));
+        let newCreatorUserId = creatorUserId;
+        if (creatorUserId === socket.userId) {
+          newCreatorUserId = party.members[0].userId;
+          parties.delete(creatorUserId);
+          parties.set(newCreatorUserId, party);
+          party.members.forEach(m => userToPartyCreator.set(m.userId, newCreatorUserId));
         }
-
-        const memberList = party.members.map(m => ({ username: m.username }));
-        party.members.forEach(m => {
-          io.to(m.socketId).emit('partyUpdate', { creator: newCreatorName, members: memberList });
-        });
+        emitPartyUpdate(party, newCreatorUserId);
       }
 
-      // Ensure the leaving player is put into a solo party
       ensureSoloParty(socket);
     });
 
-    socket.on('kickPartyMember', (targetUsername) => {
-      if (!socket.username) return;
-      const creatorName = userToPartyCreator.get(socket.username);
-      if (!creatorName || creatorName !== socket.username) {
+    socket.on('kickPartyMember', (targetUserIdArg) => {
+      if (!socket.userId) return;
+      const creatorUserId = userToPartyCreator.get(socket.userId);
+      if (!creatorUserId || creatorUserId !== socket.userId) {
         socket.emit('error', 'Only the party creator can kick members.');
         return;
       }
 
-      const party = parties.get(creatorName);
+      const party = parties.get(creatorUserId);
       if (!party) return;
 
-      const targetMember = party.members.find(m => m.username === targetUsername);
+      const targetUserId = Number(targetUserIdArg);
+      const targetMember = party.members.find(m => m.userId === targetUserId);
       if (!targetMember) return;
 
-      party.members = party.members.filter(m => m.username !== targetUsername);
-      userToPartyCreator.delete(targetUsername);
-      if (partyDisconnectTimers.has(targetUsername)) {
-        clearTimeout(partyDisconnectTimers.get(targetUsername));
-        partyDisconnectTimers.delete(targetUsername);
+      party.members = party.members.filter(m => m.userId !== targetUserId);
+      userToPartyCreator.delete(targetUserId);
+      if (partyDisconnectTimers.has(targetUserId)) {
+        clearTimeout(partyDisconnectTimers.get(targetUserId));
+        partyDisconnectTimers.delete(targetUserId);
       }
 
-      io.to(targetMember.socketId).emit('partyUpdate', { creator: null, members: [] });
+      io.to(targetMember.socketId).emit('partyUpdate', { creatorUserId: null, creator: null, members: [] });
       io.to(targetMember.socketId).emit('error', 'You have been removed from the party.');
 
-      const memberList = party.members.map(m => ({ username: m.username }));
-      party.members.forEach(m => {
-        io.to(m.socketId).emit('partyUpdate', { creator: creatorName, members: memberList });
-      });
+      emitPartyUpdate(party, creatorUserId);
 
-      // Kicked member gets a solo party (find their socket if online)
       const targetSocketIds = getSocketIds(targetMember.userId);
       if (targetSocketIds && targetSocketIds.size > 0) {
         const targetSocketId = [...targetSocketIds][0];
@@ -1672,7 +1702,7 @@ nextApp.prepare().then(() => {
       room.targetPlayers = finalPlayerCount;
 
       room.players.forEach(player => {
-        if (player.username) revokePendingPartyInvitesForMember(player.username);
+        if (player.userId) revokePendingPartyInvitesForMember(player.userId);
       });
 
       const { initializeGame } = require('./lib/game');
@@ -2140,41 +2170,37 @@ nextApp.prepare().then(() => {
       // Capture room ID before deleting mapping
       const currentRoomId = socketToRoom.get(socket.id);
 
-      if (socket.username) {
-        const creatorName = userToPartyCreator.get(socket.username);
-        if (creatorName) {
-          const party = parties.get(creatorName);
+      if (socket.userId) {
+        const creatorUserId = userToPartyCreator.get(socket.userId);
+        if (creatorUserId) {
+          const party = parties.get(creatorUserId);
           if (party && party.members.length > 1) {
+            const disconnectedUserId = socket.userId;
             const timer = setTimeout(() => {
-              partyDisconnectTimers.delete(socket.username);
-              const currentCreatorName = userToPartyCreator.get(socket.username);
-              if (currentCreatorName) {
-                const currentParty = parties.get(currentCreatorName);
+              partyDisconnectTimers.delete(disconnectedUserId);
+              const currentCreatorUserId = userToPartyCreator.get(disconnectedUserId);
+              if (currentCreatorUserId) {
+                const currentParty = parties.get(currentCreatorUserId);
                 if (currentParty) {
-                  currentParty.members = currentParty.members.filter(m => m.username !== socket.username);
-                  userToPartyCreator.delete(socket.username);
+                  currentParty.members = currentParty.members.filter(m => m.userId !== disconnectedUserId);
+                  userToPartyCreator.delete(disconnectedUserId);
 
                   if (currentParty.members.length === 0) {
-                    parties.delete(currentCreatorName);
+                    parties.delete(currentCreatorUserId);
                   } else {
-                    let newCreatorName = currentCreatorName;
-                    if (currentCreatorName === socket.username) {
-                      newCreatorName = currentParty.members[0].username;
-                      parties.delete(currentCreatorName);
-                      parties.set(newCreatorName, currentParty);
-                      currentParty.members.forEach(m => userToPartyCreator.set(m.username, newCreatorName));
+                    let newCreatorUserId = currentCreatorUserId;
+                    if (currentCreatorUserId === disconnectedUserId) {
+                      newCreatorUserId = currentParty.members[0].userId;
+                      parties.delete(currentCreatorUserId);
+                      parties.set(newCreatorUserId, currentParty);
+                      currentParty.members.forEach(m => userToPartyCreator.set(m.userId, newCreatorUserId));
                     }
-                    const memberList = currentParty.members.map(m => ({ username: m.username }));
-                    currentParty.members.forEach(m => {
-                      if (m.socketId) {
-                        io.to(m.socketId).emit('partyUpdate', { creator: newCreatorName, members: memberList });
-                      }
-                    });
+                    emitPartyUpdate(currentParty, newCreatorUserId);
                   }
                 }
               }
             }, 60000);
-            partyDisconnectTimers.set(socket.username, timer);
+            partyDisconnectTimers.set(disconnectedUserId, timer);
           }
         }
       }

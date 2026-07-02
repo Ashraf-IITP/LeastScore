@@ -152,6 +152,10 @@
   color: #fff4dc;
 }
 
+[data-theme="light"] .ls-menu-friends-col .ls-empty-state-copy {
+  color: #225239;
+}
+
 [data-theme="light"] .ls-friends-notice-kicker,
 [data-theme="light"] .ls-global-social-overlay .ls-friends-notice-kicker {
   color: #A0700A;

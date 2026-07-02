@@ -23,6 +23,9 @@ import {
 import { loadSoundSettings, saveSoundSettings, getVolumeForCategory, DEFAULT_SOUND_SETTINGS } from '../lib/soundSettings';
 import { playBGM, stopBGM, setBGMVolume } from '../lib/bgm';
 import cardBackImage from '../images/Back of a Card.png';
+import { apiFetch } from '../lib/apiFetch';
+import { clearToken } from '../lib/tokenStorage';
+import { startOfflineGame, processOfflineAction, getBotMove } from '../lib/offlineGame';
 
 // ── Shared Design Tokens ──────────────────────────────────────
 const COLORS = {
@@ -2459,6 +2462,7 @@ export default function Home() {
     const [matchRoomId, setMatchRoomId] = useState('');
     const [lobbyId, setLobbyId] = useState('');
     const [username, setUsername] = useState('');
+    const [userId, setUserId] = useState(null);
     const [authToken, setAuthToken] = useState('');
     const [userType, setUserType] = useState('');
     const [checkingAuth, setCheckingAuth] = useState(true);
@@ -2476,6 +2480,8 @@ export default function Home() {
     const [botReasoning, setBotReasoning] = useState(null);
     const [botInfoExpanded, setBotInfoExpanded] = useState(false);
     const prevRoundCountRef = useRef(-1);
+    // Offline-only: true while the bot is "thinking" (async delay)
+    const [offlineBotThinking, setOfflineBotThinking] = useState(false);
     const selectedCardsRef = useRef(selectedCards);
     const drawFromRef = useRef(drawFrom);
     const visibleIndexRef = useRef(visibleIndex);
@@ -2501,6 +2507,7 @@ export default function Home() {
     const [friendMessage, setFriendMessage] = useState('');
     const [partyMembers, setPartyMembers] = useState([]);
     const [partyCreator, setPartyCreator] = useState(null);
+    const [partyCreatorUserId, setPartyCreatorUserId] = useState(null);
     const [incomingInvite, setIncomingInvite] = useState(null);
     const [socialToast, setSocialToast] = useState('');
     const socialToastTimerRef = useRef(null);
@@ -2794,11 +2801,18 @@ export default function Home() {
     useEffect(() => { myPlayerIndexRef.current = myPlayerIndex; }, [myPlayerIndex]);
     const usernameRef = useRef(username);
     useEffect(() => { usernameRef.current = username; }, [username]);
+    const userIdRef = useRef(userId);
+    useEffect(() => { userIdRef.current = userId; }, [userId]);
 
     const getLocalPlayerIndex = useCallback((state) => {
         if (!state || !state.players) return -1;
         const refIndex = myPlayerIndexRef.current;
         if (typeof refIndex === 'number' && refIndex >= 0 && state.players[refIndex]) return refIndex;
+        const currentUserId = userIdRef.current;
+        if (currentUserId) {
+            const byId = state.players.findIndex(p => p.userId === currentUserId);
+            if (byId !== -1) return byId;
+        }
         const currentUsername = usernameRef.current;
         return currentUsername ? state.players.findIndex(p => p.username === currentUsername) : -1;
     }, []);
@@ -2889,7 +2903,7 @@ export default function Home() {
     }, [gameState?.roundHistory, gameMode, gameState?.isPlayAlong]);
 
     useEffect(() => {
-        fetch('/api/auth/me', { credentials: 'include' })
+        apiFetch('/api/auth/me')
             .then(r => r.json())
             .then(data => {
                 if (!data.user) {
@@ -2898,11 +2912,9 @@ export default function Home() {
                     // Temp password used — force them to set a new one before playing
                     router.replace('/reset-password');
                 } else {
-                    setUsername(data.user.username);
+                    setUsername(data.user.displayName || data.user.nickname || data.user.first_name || '');
+                    setUserId(data.user.userId || data.user.id || null);
                     setUserType(data.user.type || '');
-                    const match = document.cookie.match(/(?:^|;\s*)auth_token=([^;]+)/);
-                    const token = match ? decodeURIComponent(match[1]) : '';
-                    setAuthToken(token);
                     setCheckingAuth(false);
                 }
             })
@@ -2913,8 +2925,8 @@ export default function Home() {
         if (userType !== 'registered') return;
         try {
             const [friendsRes, requestsRes] = await Promise.all([
-                fetch('/api/friends/list', { credentials: 'include' }),
-                fetch('/api/friends/requests', { credentials: 'include' }),
+                apiFetch('/api/friends/list'),
+                apiFetch('/api/friends/requests'),
             ]);
             if (friendsRes.ok) { const j = await friendsRes.json(); setFriends(j.friends || []); }
             if (requestsRes.ok) { const j = await requestsRes.json(); setFriendRequests(j.requests || { incoming: [], outgoing: [] }); }
@@ -2957,11 +2969,11 @@ export default function Home() {
         if (!friendQuery.trim()) return;
         if (userType === 'guest') {
             const ok = window.confirm('Friend features are available only for registered users. Click OK to upgrade now.');
-            if (ok) { if (socket) socket.emit('guestUpgradeIntent'); fetch('/api/auth/guest/upgrade-intent', { method: 'POST' }).catch(() => null).finally(() => router.push('/login?upgradeGuest=1')); }
+            if (ok) { if (socket) socket.emit('guestUpgradeIntent'); apiFetch('/api/auth/guest/upgrade-intent', { method: 'POST' }).catch(() => null).finally(() => router.push('/login?upgradeGuest=1')); }
             return;
         }
         try {
-            const res = await fetch('/api/friends/request', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: friendQuery.trim() }) });
+            const res = await apiFetch('/api/friends/request', { method: 'POST', body: JSON.stringify({ email: friendQuery.trim() }) });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Unable to send request');
             setFriendQuery('');
@@ -2972,7 +2984,7 @@ export default function Home() {
 
     const respondFriendRequest = async (requestId, action) => {
         try {
-            const res = await fetch('/api/friends/respond', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId, action }) });
+            const res = await apiFetch('/api/friends/respond', { method: 'POST', body: JSON.stringify({ requestId, action }) });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Unable to respond to request');
             setFriendRequests(prev => ({
@@ -2985,18 +2997,18 @@ export default function Home() {
         } catch (error) { setFriendMessage(error.message || 'Unable to respond to request'); }
     };
 
-    const unfriendFriend = async (friendUsername) => {
-        if (!window.confirm(`Are you sure you want to unfriend ${friendUsername}?`)) return;
+    const unfriendFriend = async (friendId) => {
+        if (!window.confirm('Are you sure you want to remove this friend?')) return;
         try {
-            const res = await fetch('/api/friends/unfriend', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ friendUsername }), credentials: 'include' });
+            const res = await apiFetch('/api/friends/unfriend', { method: 'POST', body: JSON.stringify({ friendId }) });
             const data = await res.json();
             if (res.ok) { setFriendMessage(data.message); setTimeout(() => setFriendMessage(''), 3000); refreshFriendData(); }
             else alert(data.error || 'Unable to unfriend');
         } catch (e) { alert('Network error while unfriending'); }
     };
 
-    const inviteFriendToParty = (friend) => { if (socket) socket.emit('sendPartyInvite', friend.username); };
-    const acceptPartyInvite = () => { if (socket && incomingInvite) socket.emit('acceptPartyInvite', incomingInvite.creator || incomingInvite.from); };
+    const inviteFriendToParty = (friend) => { if (socket) socket.emit('sendPartyInvite', friend.userId); };
+    const acceptPartyInvite = () => { if (socket && incomingInvite) socket.emit('acceptPartyInvite', incomingInvite.creatorUserId); };
     const rejectPartyInvite = () => setIncomingInvite(null);
     const incomingFriendRequest = friendRequests.incoming[0] || null;
     const onlineFriendsCount = friends.filter(friend => friend.online).length;
@@ -3009,10 +3021,14 @@ export default function Home() {
         if (incomingFriendRequest) respondFriendRequest(incomingFriendRequest.requestId, 'reject');
     };
     const leaveParty = () => { if (socket) socket.emit('leaveParty'); };
-    const kickPartyMember = (u) => { if (socket) socket.emit('kickPartyMember', u); };
-    const removePartyMember = (fu) => {
-        if (partyCreator) { partyCreator === username ? kickPartyMember(fu) : fu === username && leaveParty(); return; }
-        setPartyMembers(prev => prev.filter(m => m.username !== fu));
+    const kickPartyMember = (memberUserId) => { if (socket) socket.emit('kickPartyMember', memberUserId); };
+    const removePartyMember = (memberUserId) => {
+        if (partyCreatorUserId) {
+            if (partyCreatorUserId === userId) kickPartyMember(memberUserId);
+            else if (memberUserId === userId) leaveParty();
+            return;
+        }
+        setPartyMembers(prev => prev.filter(m => m.userId !== memberUserId));
     };
 
     const checkSoloQueue = (modeName, action) => {
@@ -3021,7 +3037,7 @@ export default function Home() {
     };
 
     const handlePlayWithFriends = () => {
-        if (partyCreator && partyCreator !== username) { alert("Only the party leader can start a 'Play with Friends' lobby for the entire party."); return; }
+        if (partyCreatorUserId && partyCreatorUserId !== userId) { alert("Only the party leader can start a 'Play with Friends' lobby for the entire party."); return; }
         setGameMode('friends');
     };
 
@@ -3032,8 +3048,8 @@ export default function Home() {
 
     const handleLogout = async () => {
         try {
-            const res = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-            if (res.ok) { if (socket) socket.disconnect(); router.replace('/login'); }
+            const res = await apiFetch('/api/auth/logout', { method: 'POST' });
+            if (res.ok) { clearToken(); if (socket) socket.disconnect(); router.replace('/login'); }
         } catch (e) { console.error('Logout failed', e); }
     };
 
@@ -3065,7 +3081,12 @@ export default function Home() {
         newSocket.on('friendStatusUpdate', ({ userId, online }) => { setFriends(prev => prev.map(f => f.userId === userId ? { ...f, online } : f)); });
         newSocket.on('friendDataChanged', () => { refreshFriendData(); });
         newSocket.on('partyInviteReceived', (invite) => setIncomingInvite(invite));
-        newSocket.on('partyUpdate', ({ creator, members }) => { setPartyCreator(creator); setPartyMembers(members); if (creator) setIncomingInvite(null); });
+        newSocket.on('partyUpdate', ({ creatorUserId, creator, members }) => {
+            setPartyCreatorUserId(creatorUserId || null);
+            setPartyCreator(creator || null);
+            setPartyMembers(members || []);
+            if (creatorUserId) setIncomingInvite(null);
+        });
         newSocket.on('partyInviteRevoked', () => setIncomingInvite(null));
         newSocket.on('partyMemberJoined', ({ username }) => {
             showSocialToast(`${username} joined your party`);
@@ -3367,12 +3388,12 @@ export default function Home() {
     }, [checkingAuth, authToken, showSocialToast, applyPartyHomeFocus, reconcileSelectionAfterGameUpdate, getLocalPlayerIndex]);
 
     // ── Action handlers ───────────────────────────────────────
-    const joinRoom = () => { if (socket && matchRoomId && username) socket.emit('joinRoom', matchRoomId, username); };
-    const joinQueue = () => { if (socket && username) socket.emit('joinQueue', username); };
+    const joinRoom = () => { if (socket && matchRoomId) socket.emit('joinRoom', matchRoomId); };
+    const joinQueue = () => { if (socket) socket.emit('joinQueue'); };
 
     const requestGuestUpgrade = () => {
         if (socket) socket.emit('guestUpgradeIntent');
-        return fetch('/api/auth/guest/upgrade-intent', { method: 'POST' }).catch(() => null);
+        return apiFetch('/api/auth/guest/upgrade-intent', { method: 'POST' }).catch(() => null);
     };
 
     const tryOnlineMode = () => {
@@ -3388,8 +3409,12 @@ export default function Home() {
         if (socket && username) {
             const finalTargetPlayers = Math.max(lobbyTargetPlayers, partyMembers.length || 1);
             if (finalTargetPlayers !== lobbyTargetPlayers) setLobbyTargetPlayers(finalTargetPlayers);
-            const payload = { username, targetPlayers: finalTargetPlayers };
-            if (partyMembers.length > 0) payload.partyMembers = partyMembers.map(f => f.username);
+            const payload = { targetPlayers: finalTargetPlayers };
+            if (partyMembers.length > 0) {
+                payload.partyMemberIds = partyMembers
+                    .map(m => m.userId)
+                    .filter(id => id && id !== userId);
+            }
             socket.emit('createLobby', payload);
         }
     };
@@ -3399,7 +3424,7 @@ export default function Home() {
         window.location.href = window.location.origin + '?setupParty=1';
     };
 
-    const joinLobby = () => { if (socket && lobbyId && username) { setIsLobbyCreator(false); socket.emit('joinLobby', lobbyId, username); } };
+    const joinLobby = () => { if (socket && lobbyId) { setIsLobbyCreator(false); socket.emit('joinLobby', lobbyId); } };
 
     const startLobbyGame = (allowPartialStart = false) => {
         if (socket && lobbyId) {
@@ -3433,15 +3458,91 @@ export default function Home() {
         setFriendsEasyBotCount(0); setFriendsHardBotCount(0); setActiveMatchPrompt(null); setBotReasoning(null);
     };
 
+    // ── Offline: Play with AI (no socket) ────────────────────
     const startAIGame = () => {
-        if (!socket) return;
         const easy = Number(easyBotCount) || 0;
         const hard = Number(hardBotCount) || 0;
         const totalBots = easy + hard;
         if (totalBots < 1 || totalBots > 7) { alert('AI matches support between 1 and 7 bots (max 8 total players).'); return; }
-        const targetPlayers = totalBots + 1;
-        socket.emit('createAIGame', { username, targetPlayers, difficulty: 'both', easyBotCount: easy, hardBotCount: hard });
-        setGameMode('ai'); setConnected(true);
+        try {
+            const state = startOfflineGame('ai', { playerName: username, easyBotCount: easy, hardBotCount: hard });
+            setGameState(state);
+            setMyPlayerIndex(0);
+            setGameMode('ai');
+            setConnected(true);
+            setBotReasoning(null);
+            setPlayAlongHint(null);
+            setOfflineBotThinking(false);
+            // If the first player is a bot (shouldn't happen in ai mode but guard anyway)
+            if (state.players[state.currentPlayer]?.isBot) {
+                _runOfflineBot(state);
+            }
+        } catch (e) {
+            alert(e.message || 'Failed to start offline AI game.');
+        }
+    };
+
+    // ── Offline: Pass and Play (no socket) ───────────────────
+    const startPassAndPlayOffline = (playerCount) => {
+        try {
+            const state = startOfflineGame('pass_and_play', { playerCount });
+            setGameState(state);
+            setMyPlayerIndex(state.currentPlayer);
+            setGameMode('pass_and_play');
+            setConnected(true);
+            setPassScreen(true);
+            setBotReasoning(null);
+            setOfflineBotThinking(false);
+        } catch (e) {
+            alert(e.message || 'Failed to start offline game.');
+        }
+    };
+
+    // ── Offline bot runner ────────────────────────────────────
+    // Runs the bot for the current player if they are a bot, with a short
+    // UI delay so the player can see the state before the bot acts.
+    const _runOfflineBot = (currentState) => {
+        const nextPlayer = currentState.players[currentState.currentPlayer];
+        if (!nextPlayer || !nextPlayer.isBot || currentState.gameOver) return;
+        setOfflineBotThinking(true);
+        setTimeout(() => {
+            try {
+                const result = getBotMove(currentState);
+                setOfflineBotThinking(false);
+                if (result.reasoning && result.reasoning.length > 0) {
+                    setBotReasoning({ decision: result.reasoning });
+                }
+                if (result.action === 'declare') {
+                    setGameState(result.gameState);
+                    clearTurnSelection();
+                    if (result.roundSummary) {
+                        setRoundSummary(result.roundSummary);
+                        setIsNewRoundPass(true);
+                        setSummaryCountdown(10);
+                        if (summaryTimerRef.current) clearInterval(summaryTimerRef.current);
+                        summaryTimerRef.current = setInterval(() => {
+                            setSummaryCountdown(prev => {
+                                if (prev <= 1) { clearInterval(summaryTimerRef.current); summaryTimerRef.current = null; setRoundSummary(null); return 0; }
+                                return prev - 1;
+                            });
+                        }, 1000);
+                    }
+                    // Recursively run the next bot if needed (after a brief pause)
+                    if (!result.gameState.gameOver) {
+                        setTimeout(() => _runOfflineBot(result.gameState), 800);
+                    }
+                } else {
+                    setGameState(result.gameState);
+                    clearTurnSelection();
+                    if (!result.gameState.gameOver) {
+                        setTimeout(() => _runOfflineBot(result.gameState), 800);
+                    }
+                }
+            } catch (err) {
+                console.error('Bot move error:', err);
+                setOfflineBotThinking(false);
+            }
+        }, 900);
     };
 
     const startPlayAlongGame = () => {
@@ -3459,18 +3560,79 @@ export default function Home() {
     };
 
     const makeTurn = () => {
-        if (!socket || !gameState || myPlayerIndex === null) return;
+        if (!gameState || myPlayerIndex === null) return;
         if (!drawFrom) { alert('Please select a card source to draw from (Hidden Deck or a Visible Card).'); return; }
         if (drawFrom === 'visible' && visibleIndex == null) { alert('Choose one visible card to draw.'); return; }
         setBotReasoning(null); setPlayAlongHint(null);
+
+        // ── Offline mode (ai / pass_and_play) ────────────────
+        const isOffline = gameMode === 'ai' || gameMode === 'pass_and_play';
+        if (isOffline) {
+            const result = processOfflineAction(gameState, {
+                type: 'turn',
+                playerId: myPlayerIndex,
+                drawFrom,
+                visibleIndex: drawFrom === 'visible' ? visibleIndex : undefined,
+                discardCards: selectedCards,
+            });
+            if (!result.success) { alert(result.error || 'Invalid move.'); return; }
+            clearTurnSelection();
+            setGameState(result.gameState);
+            if (gameMode === 'pass_and_play') {
+                if (!result.gameState.gameOver && result.gameState.currentPlayer !== myPlayerIndex) {
+                    setTurnFinishedScreen(true);
+                } else {
+                    setMyPlayerIndex(result.gameState.currentPlayer);
+                }
+            } else if (gameMode === 'ai') {
+                // Let any bots take their turns
+                if (!result.gameState.gameOver) {
+                    setTimeout(() => _runOfflineBot(result.gameState), 300);
+                }
+            }
+            return;
+        }
+
+        // ── Online mode ───────────────────────────────────────
+        if (!socket) return;
         const data = { playerId: myPlayerIndex, drawFrom, discardCards: selectedCards };
         if (drawFrom === 'visible') data.visibleIndex = visibleIndex;
         socket.emit('makeTurn', matchRoomId, data);
     };
 
     const declare = () => {
-        if (!socket || !gameState || myPlayerIndex === null) return;
+        if (!gameState || myPlayerIndex === null) return;
         setPlayAlongHint(null);
+
+        // ── Offline mode ──────────────────────────────────────
+        const isOffline = gameMode === 'ai' || gameMode === 'pass_and_play';
+        if (isOffline) {
+            const result = processOfflineAction(gameState, { type: 'declare', playerId: myPlayerIndex });
+            if (!result.success) { alert(result.error || 'Cannot declare yet.'); return; }
+            clearTurnSelection();
+            setGameState(result.gameState);
+            if (result.roundSummary) {
+                setRoundSummary(result.roundSummary);
+                setIsNewRoundPass(true);
+                setSummaryCountdown(10);
+                if (summaryTimerRef.current) clearInterval(summaryTimerRef.current);
+                summaryTimerRef.current = setInterval(() => {
+                    setSummaryCountdown(prev => {
+                        if (prev <= 1) { clearInterval(summaryTimerRef.current); summaryTimerRef.current = null; setRoundSummary(null); return 0; }
+                        return prev - 1;
+                    });
+                }, 1000);
+            }
+            if (gameMode === 'pass_and_play' && !result.gameState.gameOver) {
+                setMyPlayerIndex(result.gameState.currentPlayer);
+            } else if (gameMode === 'ai' && !result.gameState.gameOver) {
+                setTimeout(() => _runOfflineBot(result.gameState), 600);
+            }
+            return;
+        }
+
+        // ── Online mode ───────────────────────────────────────
+        if (!socket) return;
         socket.emit('declare', matchRoomId, { playerId: myPlayerIndex });
     };
 
@@ -3480,7 +3642,16 @@ export default function Home() {
         const msg = isLocalGame ? 'Do you want to end this game?' : 'Are you sure you want to exit? This will count as a declaration and your opponent will win.';
         setTimeout(() => {
             const confirmed = window.confirm(msg);
-            if (confirmed && socket && gameState && myPlayerIndex !== null) socket.emit('exitGame', matchRoomId, { playerId: myPlayerIndex });
+            if (!confirmed) return;
+            if (isLocalGame) {
+                // For offline games just go back to menu
+                setGameState(null); setGameMode(null); setPlayAlongHint(null); setLobbyAction(null);
+                setConnected(false); setMyPlayerIndex(null); setSelectedCards([]); setDrawFrom(null);
+                setVisibleIndex(null); setMatchRoomId(''); setBotReasoning(null); setOfflineBotThinking(false);
+                setRoundSummary(null); setPassScreen(false); setTurnFinishedScreen(false);
+            } else {
+                if (socket && gameState && myPlayerIndex !== null) socket.emit('exitGame', matchRoomId, { playerId: myPlayerIndex });
+            }
         }, 50);
     };
 
@@ -3528,7 +3699,28 @@ export default function Home() {
     const skipSummary = () => {
         if (summaryTimerRef.current) { clearInterval(summaryTimerRef.current); summaryTimerRef.current = null; }
         setRoundSummary(null);
+        // For offline AI: if the bot goes first in the new round, kick it off now
+        if ((gameMode === 'ai') && gameState && !gameState.gameOver) {
+            const nextPlayer = gameState.players[gameState.currentPlayer];
+            if (nextPlayer && nextPlayer.isBot) {
+                setTimeout(() => _runOfflineBot(gameState), 400);
+            }
+        }
     };
+
+    // After round summary auto-dismisses (countdown hits 0) in offline AI, run the bot if needed
+    useEffect(() => {
+        if (roundSummary !== null) return;          // summary still showing
+        if (gameMode !== 'ai') return;              // only for offline AI
+        if (!gameState || gameState.gameOver) return;
+        const nextPlayer = gameState.players[gameState.currentPlayer];
+        if (nextPlayer && nextPlayer.isBot) {
+            // Brief pause so the UI re-renders first
+            const t = setTimeout(() => _runOfflineBot(gameState), 400);
+            return () => clearTimeout(t);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roundSummary]);
 
     const copyToClipboard = (text) => {
         if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -3754,7 +3946,7 @@ export default function Home() {
                                             <div className="ls-friend-search-row">
                                                 <input
                                                     className="ls-copy-input"
-                                                    placeholder="username#TAG"
+                                                    placeholder="Enter Email ID"
                                                     value={friendQuery}
                                                     onChange={e => setFriendQuery(e.target.value)}
                                                     onKeyDown={e => e.key === 'Enter' && sendFriendRequest()}
@@ -3764,15 +3956,16 @@ export default function Home() {
                                             {friends.length === 0 && (
                                                 <div className="ls-empty-state">
                                                     <p className="ls-empty-state-title">No friends yet</p>
-                                                    <p className="ls-empty-state-copy">Send a request with a username and tag.</p>
+                                                    <p className="ls-empty-state-copy">Send a request using their Email ID.</p>
                                                 </div>
                                             )}
                                             {friends.map(friend => (
-                                                <div key={friend.username} className="ls-friend-row">
+                                                <div key={friend.userId} className="ls-friend-row">
                                                     <div className="ls-friend-info">
                                                         <div className="ls-friend-avatar">{friend.username[0].toUpperCase()}</div>
                                                         <div className="ls-friend-copy">
                                                             <p className="ls-friend-name">{friend.username}</p>
+                                                            <p className="ls-friend-status" style={{ color: '#8896A7', fontSize: '12px' }}>{friend.email}</p>
                                                             <p className="ls-friend-status" style={{ color: friend.online ? '#4ade80' : '#8896A7' }}>
                                                                 <span className={`ls-status-dot${friend.online ? ' online' : ''}`} />
                                                                 {friend.online ? 'Online' : 'Offline'}
@@ -3781,11 +3974,11 @@ export default function Home() {
                                                     </div>
                                                     <div className="ls-friend-actions">
                                                         {friend.online && (
-                                                            partyMembers.some(m => m.username === friend.username)
+                                                            partyMembers.some(m => m.userId === friend.userId)
                                                                 ? <span className="ls-badge green">In Party</span>
                                                                 : <button className="btn-icon" onClick={() => inviteFriendToParty(friend)}>+ Party</button>
                                                         )}
-                                                        <button className="btn-icon danger" onClick={() => unfriendFriend(friend.username)}>✕</button>
+                                                        <button className="btn-icon danger" onClick={() => unfriendFriend(friend.userId)}>✕</button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -3814,14 +4007,14 @@ export default function Home() {
                                             )}
                                             <div className="ls-party-list">
                                                 {partyMembers.map(member => (
-                                                    <div key={member.username} className="ls-player-row">
+                                                    <div key={member.userId || member.username} className="ls-player-row">
                                                         <div className="ls-player-meta">
-                                                            {partyCreator === member.username && <span className="ls-badge">Leader</span>}
+                                                            {partyCreatorUserId === member.userId && <span className="ls-badge">Leader</span>}
                                                             <span className="ls-player-name">{member.username}</span>
-                                                            {member.username === username && <span style={{ color: '#8896A7', fontSize: '12px' }}>(You)</span>}
+                                                            {member.userId === userId && <span style={{ color: '#8896A7', fontSize: '12px' }}>(You)</span>}
                                                         </div>
-                                                        {partyCreator === username && member.username !== username && (
-                                                            <button className="btn-icon danger" onClick={() => kickPartyMember(member.username)}>Kick</button>
+                                                        {partyCreatorUserId === userId && member.userId !== userId && (
+                                                            <button className="btn-icon danger" onClick={() => kickPartyMember(member.userId)}>Kick</button>
                                                         )}
                                                     </div>
                                                 ))}
@@ -4069,10 +4262,7 @@ export default function Home() {
 
                     <button
                         className="btn-gold"
-                        onClick={() => {
-                            const players = Array.from({ length: lobbyTargetPlayers }, (_, i) => `Player ${i + 1}`);
-                            socket.emit('createPassAndPlay', players);
-                        }}
+                        onClick={() => startPassAndPlayOffline(lobbyTargetPlayers)}
                     >
                         🎮 Start Game
                     </button>
@@ -4795,8 +4985,11 @@ export default function Home() {
                                     const isCurrentTurn = gameState.currentPlayer === idx;
                                     const isMe = idx === myPlayerIndex;
                                     const isEliminated = !!player.eliminated;
+                                    // For offline AI mode, bridge offlineBotThinking into the scoreboard badge
+                                    const isOfflineThinking = isCurrentTurn && offlineBotThinking && (gameMode === 'ai') && !!player.isBot;
+                                    const isThinkingNow = player.isThinking || isOfflineThinking;
                                     let cardCls = 'ls-player-card';
-                                    if (isCurrentTurn) cardCls += player.isThinking ? ' active-thinking' : ' active-turn';
+                                    if (isCurrentTurn) cardCls += isThinkingNow ? ' active-thinking' : ' active-turn';
                                     else if (isMe) cardCls += ' is-me';
                                     if (isEliminated) cardCls += ' eliminated';
 
@@ -4806,8 +4999,8 @@ export default function Home() {
                                             {/* Column 1: Name and Turn Badge */}
                                             <div style={{ width: '140px', minWidth: '90px', borderRight: '1px solid var(--ls-scoreboard-divider, rgba(255,255,255,0.07))', paddingRight: '8px', marginRight: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
                                                 {isCurrentTurn && (
-                                                    <div className={`ls-player-card-turn-badge ${player.isThinking ? 'thinking' : 'normal'}`} style={{ top: '-18px' }}>
-                                                        {player.isThinking ? '🤖 Thinking…' : 'Active Turn'}
+                                                    <div className={`ls-player-card-turn-badge ${isThinkingNow ? 'thinking' : 'normal'}`} style={{ top: '-18px' }}>
+                                                        {isThinkingNow ? '🤖 Thinking…' : 'Active Turn'}
                                                     </div>
                                                 )}
                                                 <p className="ls-player-card-name" style={{ color: isMe ? 'var(--ls-scoreboard-me-color, #FFC857)' : 'var(--ls-scoreboard-name-color, #F0F4FF)', margin: 0, fontSize: '13px' }}>

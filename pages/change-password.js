@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { apiFetch } from '../lib/apiFetch';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -19,12 +20,12 @@ export default function ChangePasswordPage() {
 
   // Guard: only local registered users
   useEffect(() => {
-    fetch('/api/auth/me')
+    apiFetch('/api/auth/me')
       .then(r => r.json())
       .then(d => {
         if (!d.user || d.user.type !== 'registered') { router.replace('/login'); return; }
         if (d.user.auth_provider !== 'local') { router.replace('/settings'); return; }
-        setUsername(d.user.username || '');
+        setUsername(d.user.displayName || d.user.nickname || d.user.email || '');
         setChecking(false);
       })
       .catch(() => router.replace('/login'));
@@ -37,9 +38,8 @@ export default function ChangePasswordPage() {
     if (newPass !== confirmPass) return setError('Passwords do not match.');
     setLoading(true);
     try {
-      const r = await fetch('/api/auth/change-password', {
+      const r = await apiFetch('/api/auth/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass }),
       });
       const d = await r.json();

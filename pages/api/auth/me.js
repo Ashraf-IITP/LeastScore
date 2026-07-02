@@ -1,5 +1,5 @@
 // pages/api/auth/me.js — Return current user from JWT cookie
-import { getUserFromRequest } from '../../../lib/auth';
+import { getUserFromRequest, buildDisplayName } from '../../../lib/auth';
 import { getPool } from '../../../lib/db';
 
 export default async function handler(req, res) {
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
       // Verify guest session still exists in DB
       const pool = getPool();
       const [rows] = await pool.query(
-        'SELECT id, display_name, tag, expires_at FROM guest_sessions WHERE id = ? AND expires_at > NOW()',
+        'SELECT id, nickname, expires_at FROM guest_sessions WHERE id = ? AND expires_at > NOW()',
         [decoded.guestSessionId]
       );
       if (!rows.length) return res.status(401).json({ user: null });
@@ -21,9 +21,7 @@ export default async function handler(req, res) {
       return res.json({
         user: {
           type:     'guest',
-          username: `${g.display_name}#${g.tag}`,
-          display_name: g.display_name,
-          tag:      g.tag,
+          nickname: g.nickname,
           guestSessionId: g.id,
         },
       });
@@ -32,24 +30,27 @@ export default async function handler(req, res) {
     // Registered user — verify token_version matches DB
     const pool = getPool();
     const [rows] = await pool.query(
-      'SELECT id, display_name, tag, auth_provider, token_version, must_reset_password FROM users WHERE id = ?',
+      'SELECT id, first_name, last_name, nickname, email, auth_provider, token_version, must_reset_password FROM users WHERE id = ?',
       [decoded.userId]
     );
     if (!rows.length || rows[0].token_version !== decoded.tokenVersion) {
       return res.status(401).json({ user: null });
     }
     const u = rows[0];
-    return res.json({
-      user: {
-        type:              'registered',
-        id:                u.id,
-        username:          `${u.display_name}#${u.tag}`,
-        display_name:      u.display_name,
-        tag:               u.tag,
-        auth_provider:     u.auth_provider,
-        mustResetPassword: !!u.must_reset_password,
-      },
-    });
+      return res.json({
+        user: {
+          type:              'registered',
+          id:                u.id,
+          userId:            u.id,
+          displayName:       buildDisplayName(u.first_name, u.last_name, u.nickname),
+          first_name:        u.first_name,
+          last_name:         u.last_name,
+          nickname:          u.nickname,
+          email:             u.email,
+          auth_provider:     u.auth_provider,
+          mustResetPassword: !!u.must_reset_password,
+        },
+      });
   } catch (err) {
     console.error('[/api/auth/me]', err);
     return res.status(500).json({ error: 'Server error' });

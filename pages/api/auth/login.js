@@ -1,33 +1,27 @@
-// pages/api/auth/login.js — Login with username#tag + password
+// pages/api/auth/login.js — Login with email + password
 import { getPool } from '../../../lib/db';
-import { verifyPassword, signJWT, setAuthCookie, formatUsername } from '../../../lib/auth';
+import { verifyPassword, signJWT, setAuthCookie, buildRegisteredJWTPayload } from '../../../lib/auth';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { username, password } = req.body || {};
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required.' });
+  const { loginId, password } = req.body || {};
+  if (!loginId || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
   }
 
-  // Parse name#TAG
-  const hashIndex = username.lastIndexOf('#');
-  if (hashIndex === -1) {
-    return res.status(400).json({ error: 'Username must be in the format Name#XXXX.' });
-  }
-  const displayName = username.slice(0, hashIndex);
-  const tag         = username.slice(hashIndex + 1).toUpperCase();
+  const normalizedEmail = loginId.trim().toLowerCase();
 
   try {
     const pool = getPool();
     const [rows] = await pool.query(
-      `SELECT id, display_name, tag, password_hash, token_version, auth_provider, must_reset_password
-       FROM users WHERE display_name = ? AND tag = ?`,
-      [displayName, tag]
+      `SELECT id, first_name, last_name, nickname, email, password_hash, token_version, auth_provider, must_reset_password
+       FROM users WHERE email = ? LIMIT 1`,
+      [normalizedEmail]
     );
 
     if (!rows.length) {
-      return res.status(401).json({ error: 'Incorrect username or password.' });
+      return res.status(401).json({ error: 'Incorrect email or password.' });
     }
     const user = rows[0];
 
@@ -39,24 +33,28 @@ export default async function handler(req, res) {
 
     const valid = await verifyPassword(password, user.password_hash);
     if (!valid) {
-      return res.status(401).json({ error: 'Incorrect username or password.' });
+      return res.status(401).json({ error: 'Incorrect email or password.' });
     }
 
-    const mustReset = !!user.must_reset_password;
-    const token = signJWT({
-      userId:           user.id,
-      tokenVersion:     user.token_version,
-      username:         formatUsername(user.display_name, user.tag),
-      display_name:     user.display_name,
-      tag:              user.tag,
-      type:             'registered',
-      mustResetPassword: mustReset,
-    });
+    const jwtPayload = {
+      ...buildRegisteredJWTPayload(user),
+      mustResetPassword: !!user.must_reset_password,
+    };
+    const token = signJWT(jwtPayload);
+
     setAuthCookie(res, token);
     return res.json({
       ok: true,
-      mustResetPassword: mustReset,
-      user: { username: formatUsername(user.display_name, user.tag), display_name: user.display_name, tag: user.tag },
+      token,                             // mobile clients store this; web ignores it
+      mustResetPassword: !!user.must_reset_password,
+      user: {
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        nickname: user.nickname,
+        email: user.email,
+        displayName: jwtPayload.displayName,
+      },
     });
   } catch (err) {
     console.error('[/api/auth/login]', err);
