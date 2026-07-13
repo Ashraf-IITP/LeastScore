@@ -243,6 +243,7 @@ export default function Login() {
 
   const handleOAuth = (provider) => {
     const isMobile = typeof window !== 'undefined' && !!window.Capacitor;
+    const base = process.env.NEXT_PUBLIC_API_URL || '';
 
     if (upgradeGuestSessionId) {
       const query = new URLSearchParams({
@@ -251,7 +252,7 @@ export default function Login() {
         upgradeGuestTag: (regTag || guestTag || '').toUpperCase(),
         ...(isMobile ? { mobile: '1' } : {})
       }).toString();
-      const url = `/api/auth/oauth/${provider}?${query}`;
+      const url = `${base}/api/auth/oauth/${provider}?${query}`;
       if (isMobile && CapacitorBrowser) {
         CapacitorBrowser.open({ url });
       } else {
@@ -261,8 +262,8 @@ export default function Login() {
     }
 
     const url = isMobile
-      ? `/api/auth/oauth/${provider}?mobile=1`
-      : `/api/auth/oauth/${provider}`;
+      ? `${base}/api/auth/oauth/${provider}?mobile=1`
+      : `${base}/api/auth/oauth/${provider}`;
 
     if (isMobile && CapacitorBrowser) {
       CapacitorBrowser.open({ url });
