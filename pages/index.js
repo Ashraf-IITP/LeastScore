@@ -3060,12 +3060,14 @@ export default function Home() {
 
     useEffect(() => {
         if (checkingAuth || !username) return;
-        const newSocket = io({
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        const socketOptions = {
             auth: { token: authToken, username },
             withCredentials: true,
             transports: ['polling', 'websocket'],
             extraHeaders: { "ngrok-skip-browser-warning": "true" }
-        });
+        };
+        const newSocket = apiUrl ? io(apiUrl, socketOptions) : io(socketOptions);
         setSocket(newSocket);
 
         if (typeof window !== 'undefined') {
