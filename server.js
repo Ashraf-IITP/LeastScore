@@ -164,6 +164,37 @@ nextApp.prepare().then(() => {
   });
   global.io = io;
 
+  // ── CORS for Capacitor APK ──────────────────────────────────────────────────
+  // The APK WebView uses https://localhost as its origin, which is cross-origin
+  // relative to the server. Without these headers the browser silently blocks
+  // every preflight OPTIONS request → no server logs, immediate fetch error.
+  const ALLOWED_ORIGINS = new Set([
+    'https://localhost',          // Capacitor Android/iOS WebView
+    'capacitor://localhost',      // older Capacitor scheme
+    'http://localhost',           // local dev
+    'http://localhost:3000',      // local dev with port
+    'https://13.51.162.232.nip.io', // production web
+  ]);
+
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && ALLOWED_ORIGINS.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else if (!origin) {
+      // Same-origin request (web browser, curl) — no Origin header needed
+    }
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
+
+    // Respond to preflight immediately
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(204);
+    }
+    next();
+  });
+  // ───────────────────────────────────────────────────────────────────────────
+
   // Repair orphaned matches that were not properly finalized (runs once at startup)
   (async () => {
     try {
