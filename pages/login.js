@@ -237,6 +237,7 @@ export default function Login() {
   const handleGuest = () => go(async () => {
     const d = await post('/api/auth/guest', {});
     if (d.error) return setError(d.error);
+    if (d.token) saveToken(d.token);  // mobile: persist token so Bearer auth works
     router.replace('/');
   });
 

@@ -60,6 +60,7 @@ export default async function handler(req, res) {
     setAuthCookie(res, token);
     return res.status(201).json({
       ok: true,
+      token,                                          // mobile clients store this via saveToken()
       user: { type: 'guest', nickname, guestSessionId },
     });
   } catch (err) {
