@@ -79,6 +79,7 @@ export default async function handler(req, res) {
     setAuthCookie(res, token);
     return res.status(201).json({
       ok: true,
+      token,
       user: {
         id: userId,
         email: normalizedEmail,

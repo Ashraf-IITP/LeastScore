@@ -231,6 +231,7 @@ export default function Login() {
       guestSessionId: upgradeGuestSessionId || undefined
     });
     if (d.error) return setError(d.error);
+    if (d.token) saveToken(d.token);
     router.replace('/');
   });
 

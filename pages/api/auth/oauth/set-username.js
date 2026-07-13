@@ -87,6 +87,7 @@ export default async function handler(req, res) {
 
     return res.status(201).json({
       ok: true,
+      token,
       user: {
         id: user.id,
         first_name: firstName,
