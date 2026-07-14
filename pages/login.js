@@ -281,8 +281,10 @@ export default function Login() {
       const isMobile = typeof window !== 'undefined' && !!window.Capacitor;
       console.log("2. Is Mobile?", isMobile);
 
-      const base = process.env.NEXT_PUBLIC_API_URL || 'https://13.51.162.232.nip.io';
-      console.log("3. Base API URL:", base || "EMPTY");
+      let base = process.env.NEXT_PUBLIC_API_URL || 'https://13.51.162.232.nip.io';
+      if (!base.startsWith('http')) {
+        base = 'https://' + base;
+      }
 
       if (upgradeGuestSessionId) {
         // ... existing upgrade guest logic
@@ -298,6 +300,7 @@ export default function Login() {
 
       if (isMobile && CapacitorBrowser) {
         console.log("6. Calling CapacitorBrowser.open()...");
+        alert("Debugging - opening URL: " + url);
         await CapacitorBrowser.open({ url });
         console.log("7. CapacitorBrowser.open() finished!");
       } else {
@@ -306,7 +309,12 @@ export default function Login() {
       }
     } catch (error) {
       console.error("❌ ERROR in handleOAuth:", error);
-      setError("Unable to open browser. Please ensure a web browser (like Chrome) is installed.");
+      try {
+        // Fallback to system browser
+        window.open(url, '_system');
+      } catch (fallbackError) {
+        setError("Unable to open browser. Please ensure a web browser (like Chrome) is installed.");
+      }
     }
   };
 
