@@ -12,7 +12,7 @@ import { registerOAuthDeepLinkHandler } from '../lib/oauthDeepLink';
 // Capacitor Browser plugin — only available at runtime on mobile
 let CapacitorBrowser = null;
 if (typeof window !== 'undefined' && window.Capacitor) {
-  import('@capacitor/browser').then(m => { CapacitorBrowser = m.Browser; }).catch(() => {});
+  import('@capacitor/browser').then(m => { CapacitorBrowser = m.Browser; }).catch(() => { });
 }
 
 
@@ -66,7 +66,7 @@ export default function Login() {
 
   const [guestName, setGuestName] = useState('');
   const [guestTag, setGuestTag] = useState('');
-  
+
   const [countryId, setCountryId] = useState('');
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState('');
@@ -170,7 +170,7 @@ export default function Login() {
         setOauthProvider(provider);
         setOauthTempToken(tempToken);
         if (firstName) setRegName(firstName.slice(0, 20));
-        if (lastName)  setRegTag(lastName.slice(0, 20));
+        if (lastName) setRegTag(lastName.slice(0, 20));
         setView('oauth-profile');
         setChecking(false);
       }
@@ -186,10 +186,10 @@ export default function Login() {
         const audio = new Audio('/sound/touch%20sound.wav');
         const settings = loadSoundSettings();
         audio.volume = getVolumeForCategory(settings, 'click');
-        audio.play().catch(() => {});
+        audio.play().catch(() => { });
       }
     };
-    
+
     document.addEventListener('click', playClickSound);
     return () => document.removeEventListener('click', playClickSound);
   }, []);
@@ -242,34 +242,71 @@ export default function Login() {
     router.replace('/');
   });
 
-  const handleOAuth = (provider) => {
-    const isMobile = typeof window !== 'undefined' && !!window.Capacitor;
-    const base = process.env.NEXT_PUBLIC_API_URL || '';
+  // const handleOAuth = (provider) => {
+  //   const isMobile = typeof window !== 'undefined' && !!window.Capacitor;
+  //   const base = process.env.NEXT_PUBLIC_API_URL || '';
 
-    if (upgradeGuestSessionId) {
-      const query = new URLSearchParams({
-        upgradeGuestSessionId: String(upgradeGuestSessionId),
-        upgradeGuestName: regName || guestName || '',
-        upgradeGuestTag: (regTag || guestTag || '').toUpperCase(),
-        ...(isMobile ? { mobile: '1' } : {})
-      }).toString();
-      const url = `${base}/api/auth/oauth/${provider}?${query}`;
+  //   if (upgradeGuestSessionId) {
+  //     const query = new URLSearchParams({
+  //       upgradeGuestSessionId: String(upgradeGuestSessionId),
+  //       upgradeGuestName: regName || guestName || '',
+  //       upgradeGuestTag: (regTag || guestTag || '').toUpperCase(),
+  //       ...(isMobile ? { mobile: '1' } : {})
+  //     }).toString();
+  //     const url = `${base}/api/auth/oauth/${provider}?${query}`;
+  //     if (isMobile && CapacitorBrowser) {
+  //       CapacitorBrowser.open({ url });
+  //     } else {
+  //       window.location.href = url;
+  //     }
+  //     return;
+  //   }
+
+  //   const url = isMobile
+  //     ? `${base}/api/auth/oauth/${provider}?mobile=1`
+  //     : `${base}/api/auth/oauth/${provider}`;
+
+  //   if (isMobile && CapacitorBrowser) {
+  //     CapacitorBrowser.open({ url });
+  //   } else {
+  //     window.location.href = url;
+  //   }
+  // };
+
+  const handleOAuth = async (provider) => {
+    try {
+      console.log("==== OAUTH DEBUG ====");
+      console.log("1. Provider:", provider);
+
+      const isMobile = typeof window !== 'undefined' && !!window.Capacitor;
+      console.log("2. Is Mobile?", isMobile);
+
+      const base = process.env.NEXT_PUBLIC_API_URL || '';
+      console.log("3. Base API URL:", base || "EMPTY");
+
+      if (upgradeGuestSessionId) {
+        // ... existing upgrade guest logic
+        return;
+      }
+
+      const url = isMobile
+        ? `${base}/api/auth/oauth/${provider}?mobile=1`
+        : `${base}/api/auth/oauth/${provider}`;
+
+      console.log("4. Target URL:", url);
+      console.log("5. CapacitorBrowser Available?", !!CapacitorBrowser);
+
       if (isMobile && CapacitorBrowser) {
-        CapacitorBrowser.open({ url });
+        console.log("6. Calling CapacitorBrowser.open()...");
+        await CapacitorBrowser.open({ url });
+        console.log("7. CapacitorBrowser.open() finished!");
       } else {
+        console.log("6. Redirecting via window.location...");
         window.location.href = url;
       }
-      return;
-    }
-
-    const url = isMobile
-      ? `${base}/api/auth/oauth/${provider}?mobile=1`
-      : `${base}/api/auth/oauth/${provider}`;
-
-    if (isMobile && CapacitorBrowser) {
-      CapacitorBrowser.open({ url });
-    } else {
-      window.location.href = url;
+    } catch (error) {
+      console.error("❌ ERROR in handleOAuth:", error);
+      // Optional: alert(error.message) so it shows directly on the phone screen
     }
   };
 
