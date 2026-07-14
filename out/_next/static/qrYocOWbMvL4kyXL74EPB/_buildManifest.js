@@ -1,6 +1,6 @@
 self.__BUILD_MANIFEST = {
   "/": [
-    "static/chunks/0rp-hle4.4_6q.js"
+    "static/chunks/0~o69vus9.5yh.js"
   ],
   "/_error": [
     "static/chunks/17zwj7g1-klw9.js"
@@ -12,7 +12,7 @@ self.__BUILD_MANIFEST = {
     "static/chunks/0.yw555d_qr6m.js"
   ],
   "/login": [
-    "static/chunks/01_-j7-higu5s.js"
+    "static/chunks/0ebgfz.62eu7r.js"
   ],
   "/oauth-callback": [
     "static/chunks/0eg_rk0vcpq-a.js"
