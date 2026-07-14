@@ -306,7 +306,7 @@ export default function Login() {
       }
     } catch (error) {
       console.error("❌ ERROR in handleOAuth:", error);
-      // Optional: alert(error.message) so it shows directly on the phone screen
+      setError("Unable to open browser. Please ensure a web browser (like Chrome) is installed.");
     }
   };
 
