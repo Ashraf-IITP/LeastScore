@@ -160,7 +160,18 @@ nextApp.prepare().then(() => {
   const server = http.createServer(app);
   const io = socketIo(server, {
     pingTimeout: 60000,
-    pingInterval: 15000
+    pingInterval: 15000,
+    cors: {
+      origin: [
+        'https://localhost',
+        'capacitor://localhost',
+        'http://localhost',
+        'http://localhost:3000',
+        'https://13.51.162.232.nip.io'
+      ],
+      methods: ["GET", "POST"],
+      credentials: true
+    }
   });
   global.io = io;
 
