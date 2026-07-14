@@ -300,7 +300,7 @@ export default function Login() {
 
       if (isMobile && CapacitorBrowser) {
         console.log("6. Calling CapacitorBrowser.open()...");
-        alert("Debugging - opening URL: " + url);
+        // alert("Debugging - opening URL: " + url);
         await CapacitorBrowser.open({ url });
         console.log("7. CapacitorBrowser.open() finished!");
       } else {
