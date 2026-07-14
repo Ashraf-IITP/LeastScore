@@ -281,7 +281,7 @@ export default function Login() {
       const isMobile = typeof window !== 'undefined' && !!window.Capacitor;
       console.log("2. Is Mobile?", isMobile);
 
-      const base = process.env.NEXT_PUBLIC_API_URL || '';
+      const base = process.env.NEXT_PUBLIC_API_URL || 'https://13.51.162.232.nip.io';
       console.log("3. Base API URL:", base || "EMPTY");
 
       if (upgradeGuestSessionId) {
