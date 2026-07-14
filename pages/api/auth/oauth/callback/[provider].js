@@ -140,7 +140,18 @@ export default async function handler(req, res) {
     }
     return res.redirect(`/login?${query.toString()}`);
   } catch (err) {
-    console.error(`[/api/auth/oauth/callback/${provider}]`, err);
-    return redirectError('OAuth login failed. Please try again.');
+    console.error(`[/api/auth/oauth/callback/${provider}]`, err.response?.data || err);
+    
+    // Extract detailed error message from axios if available
+    let errorDetail = err.message;
+    if (err.response && err.response.data) {
+        if (typeof err.response.data === 'object') {
+            errorDetail = err.response.data.error_description || err.response.data.error || JSON.stringify(err.response.data);
+        } else {
+            errorDetail = String(err.response.data);
+        }
+    }
+    
+    return redirectError(`OAuth login failed. Detail: ${errorDetail}`);
   }
 }
