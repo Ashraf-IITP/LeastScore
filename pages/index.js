@@ -2918,7 +2918,12 @@ export default function Home() {
                     setCheckingAuth(false);
                 }
             })
-            .catch(() => router.replace('/login'));
+            .catch(() => {
+                // Network error — device is offline. Allow access with limited offline modes.
+                setUsername('Player');
+                setUserType('offline');
+                setCheckingAuth(false);
+            });
     }, []);
 
     const refreshFriendData = async () => {
@@ -3060,7 +3065,7 @@ export default function Home() {
     }, [partyMembers.length, lobbyTargetPlayers]);
 
     useEffect(() => {
-        if (checkingAuth || !username) return;
+        if (checkingAuth || !username || userType === 'offline') return;
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
         const socketOptions = {
             auth: { token: authToken, username },
@@ -3826,13 +3831,16 @@ export default function Home() {
 
     // ── Main Menu ─────────────────────────────────────────────
     if (!connected && !gameMode) {
-        const gameModes = [
-            { label: 'Online Match', desc: 'Play against others worldwide', img: '/images/menu/online-match.png', action: () => checkSoloQueue('Online Match', tryOnlineMode), guestBlocked: true },
-            { label: 'Play with Friends', desc: 'Create or join a private lobby', img: '/images/menu/play-with-friends.png', action: handlePlayWithFriends, descClass: 'ls-mode-desc--green' },
+        const allGameModes = [
+            { label: 'Online Match', desc: 'Play against others worldwide', img: '/images/menu/online-match.png', action: () => checkSoloQueue('Online Match', tryOnlineMode), guestBlocked: true, requiresOnline: true },
+            { label: 'Play with Friends', desc: 'Create or join a private lobby', img: '/images/menu/play-with-friends.png', action: handlePlayWithFriends, descClass: 'ls-mode-desc--green', requiresOnline: true },
             { label: 'Pass and Play', desc: 'Local multiplayer on one device', img: '/images/menu/pass-and-play.png', action: () => checkSoloQueue('Pass and Play', () => setGameMode('pass_and_play')), descClass: 'ls-mode-desc--green' },
             { label: 'Play with AI', desc: 'Practice vs smart bots', img: '/images/menu/play-with-ai.png', action: () => checkSoloQueue('Play with AI', () => setGameMode('ai')) },
             { label: 'Tutorial', desc: 'Learn how to play', img: '/images/menu/tutorial.png', action: () => setGameMode('tutorial') },
         ];
+        const gameModes = userType === 'offline'
+            ? allGameModes.filter(m => !m.requiresOnline)
+            : allGameModes;
 
         return wrapScreen(
             <PageShell wide>
@@ -3841,6 +3849,7 @@ export default function Home() {
                     {/* Left: Game modes */}
                     <div className="ls-main-menu-game-col">
                         <div className="ls-menu-logo-wrap">
+                            {userType !== 'offline' && (
                             <div className="ls-top-toolbar">
                                 <button className="ls-toolbar-btn settings" onClick={() => router.push('/settings')} data-tooltip="Settings" aria-label="Settings">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3856,12 +3865,18 @@ export default function Home() {
                                     </svg>
                                 </button>
                             </div>
+                            )}
                             <LogoHeader badge="The card game where less is more" />
                             <div className="ls-user-identity">
                                 <div className="ls-user-chip" style={{ margin: 0 }}>
                                     <span>👤</span>
                                     <strong>{username}</strong>
                                 </div>
+                                {userType === 'offline' && (
+                                    <div className="ls-alert-info" style={{ marginTop: '10px', marginBottom: 0, fontSize: '12px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span>📵</span> Offline mode — online features unavailable
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="ls-card ls-menu-game-card">
@@ -3898,7 +3913,7 @@ export default function Home() {
                     </div>
 
                     {/* Right: Friends & Party */}
-                    {userType === 'registered' ? (
+                    {userType === 'offline' ? null : userType === 'registered' ? (
                         <div className="ls-menu-friends-col" ref={friendsSectionRef}>
                             {friendMessage && <div className="ls-alert-success" style={{ marginBottom: '12px' }}>{friendMessage}</div>}
 
@@ -4071,7 +4086,7 @@ export default function Home() {
                                 </div>
                             </div>
                         </div>
-                    )}
+                    ) : null)
                 </div>
             </PageShell>
         );
