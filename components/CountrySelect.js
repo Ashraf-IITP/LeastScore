@@ -30,7 +30,13 @@ export default function CountrySelect({ value, onChange, disabled = false }) {
         return r.json();
       })
       .then((d) => {
-        if (!cancelled && d.countries) setCountries(d.countries);
+        console.log('Fetched countries payload:', d);
+        if (!cancelled && d.countries) {
+          console.log('Setting countries state, count:', d.countries.length);
+          setCountries(d.countries);
+        } else {
+          console.log('Not setting countries. cancelled:', cancelled, 'hasCountries:', !!d.countries);
+        }
       })
       .catch((err) => {
         console.error('Error fetching countries:', err);
