@@ -3862,14 +3862,11 @@ export default function Home() {
             { label: 'Play with Friends', desc: 'Create or join a private lobby', img: '/images/menu/play-with-friends.png', action: handlePlayWithFriends, descClass: 'ls-mode-desc--green', requiresOnline: true },
             { label: 'Pass and Play', desc: 'Local multiplayer on one device', img: '/images/menu/pass-and-play.png', action: () => checkSoloQueue('Pass and Play', () => setGameMode('pass_and_play')), descClass: 'ls-mode-desc--green' },
             { label: 'Play with AI', desc: 'Practice vs smart bots', img: '/images/menu/play-with-ai.png', action: () => checkSoloQueue('Play with AI', () => setGameMode('ai')) },
-            // Offline only: Play Along with Hints runs locally, no socket needed
-            { label: 'Play Along with Hints', desc: 'Learn by playing — get AI hints in real time', img: '/images/menu/tutorial.png', action: startOfflinePlayAlong, offlineOnly: true },
-            // Online only: Tutorial (includes Play Along via socket)
-            { label: 'Tutorial', desc: 'Learn how to play', img: '/images/menu/tutorial.png', action: () => setGameMode('tutorial'), requiresOnline: true },
+            { label: 'Tutorial', desc: 'Learn how to play', img: '/images/menu/tutorial.png', action: () => setGameMode('tutorial') },
         ];
         const gameModes = userType === 'offline'
             ? allGameModes.filter(m => !m.requiresOnline)
-            : allGameModes.filter(m => !m.offlineOnly);
+            : allGameModes;
 
         return wrapScreen(
             <PageShell wide>
