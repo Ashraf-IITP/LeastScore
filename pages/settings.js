@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const [lastName, setLastName] = useState('');
   const [nickname, setNickname] = useState('');
   const [authProvider, setAuthProvider] = useState('');
+  const [isOffline, setIsOffline] = useState(false);
   const [soundSettings, setSoundSettings] = useState(DEFAULT_SOUND_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -91,7 +92,10 @@ export default function SettingsPage() {
         setThemePref(loadTheme());
       })
       .catch(() => {
-        router.replace('/login');
+        // Network error — device is offline. Allow access with limited settings (sound + theme only).
+        setIsOffline(true);
+        setSoundSettings(loadSoundSettings());
+        setThemePref(loadTheme());
       })
       .finally(() => setLoading(false));
   }, [router]);
@@ -140,35 +144,47 @@ export default function SettingsPage() {
               </button>
 
               <h1 className="view-title">Settings</h1>
-              <p className="view-desc">Update your profile and audio levels.</p>
+              <p className="view-desc">{isOffline ? 'Adjust sound and appearance.' : 'Update your profile and audio levels.'}</p>
 
-              <div className="settings-section" style={{ marginBottom: '12px' }}>
-                <p className="settings-section-title">Profile</p>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: resolvedTheme === 'light' ? '#FFFFFF' : 'rgba(0,0,0,0.35)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: resolvedTheme === 'light' ? '#1E4D32' : '#F0F4FF' }}>
-                      {`${firstName} ${lastName}`.trim() || nickname}
-                    </div>
-                  </div>
-                  <button onClick={() => router.push('/change-name')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
-                    Edit
-                  </button>
-                </div>
-              </div>
-
-              {/* Change Password row — local accounts only */}
-              {authProvider === 'local' && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: resolvedTheme === 'light' ? '#FFFFFF' : 'rgba(0,0,0,0.35)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div>
-                    <div style={{ fontSize: '15px', fontWeight: 600, color: resolvedTheme === 'light' ? '#1E4D32' : '#F0F4FF' }}>🔒 Change Password</div>
-                    <div style={{ fontSize: '12px', color: '#8896A7', marginTop: '2px' }}>Update your login password</div>
-                  </div>
-                  <button onClick={() => router.push('/change-password')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
-                    Update
-                  </button>
+              {/* Offline mode notice */}
+              {isOffline && (
+                <div style={{ background: 'rgba(58,77,255,0.08)', border: '1px solid rgba(58,77,255,0.25)', color: '#7B8FFF', padding: '11px 15px', borderRadius: '13px', fontSize: '13.5px', marginBottom: '18px', fontWeight: 500, lineHeight: 1.5 }}>
+                  📵 You're offline — profile settings are unavailable.
                 </div>
               )}
-              <br></br>
+
+              {/* Profile section — hidden when offline */}
+              {!isOffline && (
+                <>
+                  <div className="settings-section" style={{ marginBottom: '12px' }}>
+                    <p className="settings-section-title">Profile</p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: resolvedTheme === 'light' ? '#FFFFFF' : 'rgba(0,0,0,0.35)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: resolvedTheme === 'light' ? '#1E4D32' : '#F0F4FF' }}>
+                          {`${firstName} ${lastName}`.trim() || nickname}
+                        </div>
+                      </div>
+                      <button onClick={() => router.push('/change-name')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Change Password row — local accounts only */}
+                  {authProvider === 'local' && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: resolvedTheme === 'light' ? '#FFFFFF' : 'rgba(0,0,0,0.35)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div>
+                        <div style={{ fontSize: '15px', fontWeight: 600, color: resolvedTheme === 'light' ? '#1E4D32' : '#F0F4FF' }}>🔒 Change Password</div>
+                        <div style={{ fontSize: '12px', color: '#8896A7', marginTop: '2px' }}>Update your login password</div>
+                      </div>
+                      <button onClick={() => router.push('/change-password')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
+                        Update
+                      </button>
+                    </div>
+                  )}
+                  <br></br>
+                </>
+              )}
 
               {/* ── Theme ── */}
               <div className="settings-section" style={{ marginBottom: '12px' }}>

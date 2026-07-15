@@ -22,6 +22,7 @@ import {
 } from '../components/PlayAlongMatch';
 import { loadSoundSettings, saveSoundSettings, getVolumeForCategory, DEFAULT_SOUND_SETTINGS } from '../lib/soundSettings';
 import { playBGM, stopBGM, setBGMVolume } from '../lib/bgm';
+import { loadTheme, saveTheme, applyTheme, resolveTheme } from '../lib/themeSettings';
 import cardBackImage from '../images/Back of a Card.png';
 import { apiFetch } from '../lib/apiFetch';
 import { clearToken } from '../lib/tokenStorage';
@@ -2526,9 +2527,11 @@ export default function Home() {
     const summaryTimerRef = useRef(null);
     const [soundSettings, setSoundSettings] = useState(() => loadSoundSettings());
     const [showSettingsModal, setShowSettingsModal] = useState(false);
+    const [themePref, setThemePref] = useState('system');
     const soundSettingsRef = useRef(soundSettings);
     useEffect(() => { soundSettingsRef.current = soundSettings; }, [soundSettings]);
     useEffect(() => { setSoundSettings(loadSoundSettings()); }, []);
+    useEffect(() => { setThemePref(loadTheme()); }, []);
     const getVolume = useCallback((category) => getVolumeForCategory(soundSettingsRef.current, category), []);
     const playSound = useCallback((src, category) => {
         const audio = new Audio(src);
@@ -3559,6 +3562,28 @@ export default function Home() {
         setGameMode('play_along'); setConnected(true); setPlayAlongHint(null);
     };
 
+    // ── Offline: Play Along with Hints (no socket) ────────────
+    const startOfflinePlayAlong = () => {
+        try {
+            const state = startOfflineGame('ai', { playerName: username, easyBotCount: 1, hardBotCount: 0 });
+            // Mark the game as play_along so the hint UI activates
+            state.isPlayAlong = true;
+            setGameState(state);
+            setMyPlayerIndex(0);
+            setGameMode('play_along');
+            setConnected(true);
+            setBotReasoning(null);
+            setPlayAlongHint(null);
+            setOfflineBotThinking(false);
+            // If somehow the bot goes first, run it
+            if (state.players[state.currentPlayer]?.isBot) {
+                _runOfflineBot(state);
+            }
+        } catch (e) {
+            alert(e.message || 'Failed to start offline Play Along game.');
+        }
+    };
+
     const requestPlayAlongHint = () => {
         if (!gameState || myPlayerIndex === null) return;
         if (gameState.currentPlayer !== myPlayerIndex) return;
@@ -3573,8 +3598,8 @@ export default function Home() {
         if (drawFrom === 'visible' && visibleIndex == null) { alert('Choose one visible card to draw.'); return; }
         setBotReasoning(null); setPlayAlongHint(null);
 
-        // ── Offline mode (ai / pass_and_play) ────────────────
-        const isOffline = gameMode === 'ai' || gameMode === 'pass_and_play';
+        // ── Offline mode (ai / pass_and_play / offline play_along) ─────
+        const isOffline = gameMode === 'ai' || gameMode === 'pass_and_play' || (gameMode === 'play_along' && gameState && !gameState.roomId);
         if (isOffline) {
             const result = processOfflineAction(gameState, {
                 type: 'turn',
@@ -3592,8 +3617,8 @@ export default function Home() {
                 } else {
                     setMyPlayerIndex(result.gameState.currentPlayer);
                 }
-            } else if (gameMode === 'ai') {
-                // Let any bots take their turns
+            } else if (gameMode === 'ai' || (gameMode === 'play_along' && !gameState.roomId)) {
+                // Let any bots take their turns (offline AI or offline play_along)
                 if (!result.gameState.gameOver) {
                     setTimeout(() => _runOfflineBot(result.gameState), 300);
                 }
@@ -3613,7 +3638,7 @@ export default function Home() {
         setPlayAlongHint(null);
 
         // ── Offline mode ──────────────────────────────────────
-        const isOffline = gameMode === 'ai' || gameMode === 'pass_and_play';
+        const isOffline = gameMode === 'ai' || gameMode === 'pass_and_play' || (gameMode === 'play_along' && gameState && !gameState.roomId);
         if (isOffline) {
             const result = processOfflineAction(gameState, { type: 'declare', playerId: myPlayerIndex });
             if (!result.success) { alert(result.error || 'Cannot declare yet.'); return; }
@@ -3633,7 +3658,7 @@ export default function Home() {
             }
             if (gameMode === 'pass_and_play' && !result.gameState.gameOver) {
                 setMyPlayerIndex(result.gameState.currentPlayer);
-            } else if (gameMode === 'ai' && !result.gameState.gameOver) {
+            } else if ((gameMode === 'ai' || (gameMode === 'play_along' && !gameState.roomId)) && !result.gameState.gameOver) {
                 setTimeout(() => _runOfflineBot(result.gameState), 600);
             }
             return;
@@ -3707,8 +3732,8 @@ export default function Home() {
     const skipSummary = () => {
         if (summaryTimerRef.current) { clearInterval(summaryTimerRef.current); summaryTimerRef.current = null; }
         setRoundSummary(null);
-        // For offline AI: if the bot goes first in the new round, kick it off now
-        if ((gameMode === 'ai') && gameState && !gameState.gameOver) {
+        // For offline AI / offline play_along: if the bot goes first in the new round, kick it off now
+        if ((gameMode === 'ai' || (gameMode === 'play_along' && gameState && !gameState.roomId)) && gameState && !gameState.gameOver) {
             const nextPlayer = gameState.players[gameState.currentPlayer];
             if (nextPlayer && nextPlayer.isBot) {
                 setTimeout(() => _runOfflineBot(gameState), 400);
@@ -3716,10 +3741,11 @@ export default function Home() {
         }
     };
 
-    // After round summary auto-dismisses (countdown hits 0) in offline AI, run the bot if needed
+    // After round summary auto-dismisses (countdown hits 0) in offline AI/play_along, run the bot if needed
     useEffect(() => {
         if (roundSummary !== null) return;          // summary still showing
-        if (gameMode !== 'ai') return;              // only for offline AI
+        const isOfflineWithBot = gameMode === 'ai' || (gameMode === 'play_along' && gameState && !gameState.roomId);
+        if (!isOfflineWithBot) return;
         if (!gameState || gameState.gameOver) return;
         const nextPlayer = gameState.players[gameState.currentPlayer];
         if (nextPlayer && nextPlayer.isBot) {
@@ -3836,11 +3862,14 @@ export default function Home() {
             { label: 'Play with Friends', desc: 'Create or join a private lobby', img: '/images/menu/play-with-friends.png', action: handlePlayWithFriends, descClass: 'ls-mode-desc--green', requiresOnline: true },
             { label: 'Pass and Play', desc: 'Local multiplayer on one device', img: '/images/menu/pass-and-play.png', action: () => checkSoloQueue('Pass and Play', () => setGameMode('pass_and_play')), descClass: 'ls-mode-desc--green' },
             { label: 'Play with AI', desc: 'Practice vs smart bots', img: '/images/menu/play-with-ai.png', action: () => checkSoloQueue('Play with AI', () => setGameMode('ai')) },
-            { label: 'Tutorial', desc: 'Learn how to play', img: '/images/menu/tutorial.png', action: () => setGameMode('tutorial') },
+            // Offline only: Play Along with Hints runs locally, no socket needed
+            { label: 'Play Along with Hints', desc: 'Learn by playing — get AI hints in real time', img: '/images/menu/tutorial.png', action: startOfflinePlayAlong, offlineOnly: true },
+            // Online only: Tutorial (includes Play Along via socket)
+            { label: 'Tutorial', desc: 'Learn how to play', img: '/images/menu/tutorial.png', action: () => setGameMode('tutorial'), requiresOnline: true },
         ];
         const gameModes = userType === 'offline'
             ? allGameModes.filter(m => !m.requiresOnline)
-            : allGameModes;
+            : allGameModes.filter(m => !m.offlineOnly);
 
         return wrapScreen(
             <PageShell wide>
@@ -3849,7 +3878,7 @@ export default function Home() {
                     {/* Left: Game modes */}
                     <div className="ls-main-menu-game-col">
                         <div className="ls-menu-logo-wrap">
-                            {userType !== 'offline' && (
+                            {/* Settings & Logout toolbar — settings visible for all, logout hidden in offline */}
                             <div className="ls-top-toolbar">
                                 <button className="ls-toolbar-btn settings" onClick={() => router.push('/settings')} data-tooltip="Settings" aria-label="Settings">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3857,6 +3886,7 @@ export default function Home() {
                                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                                     </svg>
                                 </button>
+                                {userType !== 'offline' && (
                                 <button className="ls-toolbar-btn logout" onClick={handleLogout} data-tooltip="Logout" aria-label="Logout">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -3864,8 +3894,8 @@ export default function Home() {
                                         <line x1="21" y1="12" x2="9" y2="12" />
                                     </svg>
                                 </button>
+                                )}
                             </div>
-                            )}
                             <LogoHeader badge="The card game where less is more" />
                             <div className="ls-user-identity">
                                 <div className="ls-user-chip" style={{ margin: 0 }}>
@@ -4139,8 +4169,14 @@ export default function Home() {
                     <button
                         className="btn-gold"
                         onClick={() => {
-                            if (!socket) { alert('Please wait — connecting to the server.'); return; }
-                            startPlayAlongGame();
+                            if (userType === 'offline') {
+                                // Offline: run entirely in-browser, no socket needed
+                                startOfflinePlayAlong();
+                            } else if (!socket) {
+                                alert('Please wait — connecting to the server.');
+                            } else {
+                                startPlayAlongGame();
+                            }
                         }}
                     >
                         🎮 Play Along with Hints
@@ -4746,9 +4782,42 @@ export default function Home() {
                                             saveSoundSettings(newSettings);
                                         }} />
                                         <p style={{ margin: '0 0 18px', color: '#8896A7', fontSize: '12.5px', lineHeight: 1.45 }}>Controls round win/loss, elimination, disconnected, and other gameplay audio.</p>
+
+                                        {/* ── Appearance ── */}
+                                        <p style={{ margin: '18px 0 12px', color: '#F0F4FF', fontSize: '14px', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 700 }}>Appearance</p>
+                                        <div style={{ display: 'flex', gap: '6px', background: 'rgba(0,0,0,0.18)', padding: '4px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.06)', marginBottom: '8px' }}>
+                                            {[['system','☀︎/🌑 Auto'],['light','☀︎ Light'],['dark','🌑 Dark']].map(([val, label]) => (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => {
+                                                        setThemePref(val);
+                                                        saveTheme(val);
+                                                        applyTheme(val);
+                                                    }}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '9px 6px',
+                                                        borderRadius: '11px',
+                                                        border: 'none',
+                                                        fontFamily: "'DM Sans', sans-serif",
+                                                        fontSize: '12px',
+                                                        fontWeight: 600,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        background: themePref === val ? 'rgba(255,255,255,0.10)' : 'transparent',
+                                                        color: themePref === val ? '#FFFFFF' : '#8896A7',
+                                                        boxShadow: themePref === val ? '0 1px 0 rgba(255,255,255,0.06) inset' : 'none',
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    {label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <p style={{ margin: '0 0 4px', color: '#8896A7', fontSize: '12.5px', lineHeight: 1.45 }}>Controls the colour theme across the entire app.</p>
                                     </div>
 
-                                    <button className="btn-gold" style={{ width: '100%', marginTop: '16px' }} onClick={handleInternalBack}>Done</button>
+                                    <button className="btn-gold" style={{ width: '100%', marginTop: '20px' }} onClick={handleInternalBack}>Done</button>
                                 </div>
                             </div>
                         </div>
