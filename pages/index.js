@@ -4902,6 +4902,32 @@ export default function Home() {
                             </button>
                         ) : (
                             <div className="ls-action-row">
+                                {isPlayAlong ? (
+                                    <>
+                                        <button
+                                            className="ls-action-btn hint-btn"
+                                            onClick={requestPlayAlongHint}
+                                            disabled={!isMyTurn}
+                                        >
+                                            💡 Hint
+                                        </button>
+                                        <button
+                                            className={`ls-action-btn declare${isMyTurn ? ' turn-shine' : ''}`}
+                                            onClick={() => { if (isPlayAlong) confirmPlayAlongDeclare(myPlayer.hand, declare); else declare(); }}
+                                            disabled={!isMyTurn}
+                                        >
+                                            ♛ Declare
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        className={`ls-action-btn declare${isMyTurn ? ' turn-shine' : ''}`}
+                                        onClick={() => { if (isPlayAlong) confirmPlayAlongDeclare(myPlayer.hand, declare); else declare(); }}
+                                        disabled={!isMyTurn}
+                                    >
+                                        ♛ Declare
+                                    </button>
+                                )}
                                 <button
                                     className={`ls-action-btn make-turn${isMyTurn ? ' turn-shine' : ''}`}
                                     aria-label="Make Turn"
@@ -4910,22 +4936,6 @@ export default function Home() {
                                 >
                                     ▶ Make Turn
                                 </button>
-                                <button
-                                    className={`ls-action-btn declare${isMyTurn ? ' turn-shine' : ''}`}
-                                    onClick={() => { if (isPlayAlong) confirmPlayAlongDeclare(myPlayer.hand, declare); else declare(); }}
-                                    disabled={!isMyTurn}
-                                >
-                                    ♛ Declare
-                                </button>
-                                {isPlayAlong && (
-                                    <button
-                                        className="ls-action-btn hint-btn"
-                                        onClick={requestPlayAlongHint}
-                                        disabled={!isMyTurn}
-                                    >
-                                        💡 Hint
-                                    </button>
-                                )}
                             </div>
                         )}
 

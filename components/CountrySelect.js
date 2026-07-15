@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { apiFetch } from '../lib/apiFetch';
 
 const selectStyle = {
   width: '100%',
@@ -21,7 +22,7 @@ export default function CountrySelect({ value, onChange, disabled = false }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/countries')
+    apiFetch('/api/countries')
       .then((r) => r.json())
       .then((d) => {
         if (!cancelled && d.countries) setCountries(d.countries);
