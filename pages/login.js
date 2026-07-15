@@ -33,10 +33,10 @@ const FacebookIcon = () => (
 );
 
 // ── Reusable field ────────────────────────────────────────────
-function Field({ label, type = 'text', value, onChange, placeholder, maxLength, autoComplete }) {
+function Field({ label, type = 'text', value, onChange, placeholder, maxLength, autoComplete, required }) {
   return (
     <div className="input-group">
-      <label>{label}</label>
+      <label>{label}{required && <span style={{ color: '#FF5A5A', marginLeft: '3px' }}>*</span>}</label>
       <input
         type={type} value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} maxLength={maxLength} autoComplete={autoComplete}
@@ -1059,8 +1059,8 @@ export default function Login() {
                   <button className="btn-back" onClick={() => changeView('main')}>← Back</button>
                   <h2 className="view-title">Account Login</h2>
                   <p className="view-desc">Log in with your email and password.</p>
-                  <Field label="Email" value={loginUser} onChange={setLoginUser} placeholder="you@example.com" autoComplete="username" />
-                  <Field label="Password" type="password" value={loginPass} onChange={setLoginPass} placeholder="Your password" autoComplete="current-password" />
+                  <Field label="Email" value={loginUser} onChange={setLoginUser} placeholder="you@example.com" autoComplete="username" required />
+                  <Field label="Password" type="password" value={loginPass} onChange={setLoginPass} placeholder="Your password" autoComplete="current-password" required />
                   <button className="btn-gold mt-4" onClick={handleLogin} disabled={loading || !loginUser || !loginPass}>
                     {loading ? 'Logging in…' : 'Log In'}
                   </button>
@@ -1087,6 +1087,7 @@ export default function Login() {
                         onChange={setForgotEmail}
                         placeholder="you@example.com"
                         autoComplete="email"
+                        required
                       />
                       <button
                         className="btn-primary mt-4"
@@ -1119,13 +1120,13 @@ export default function Login() {
                     Complete your profile for <strong style={{ color: '#F0F4FF', textTransform: 'capitalize' }}>{oauthProvider}</strong> sign-up.
                   </p>
                   <div className="input-row">
-                    <div style={{ flex: 1 }}><Field label="First Name" value={regName} onChange={setRegName} placeholder="First Name" maxLength={20} /></div>
+                    <div style={{ flex: 1 }}><Field label="First Name" value={regName} onChange={setRegName} placeholder="First Name" maxLength={20} required /></div>
                     <div style={{ flex: 1 }}><Field label="Last Name" value={regTag} onChange={setRegTag} placeholder="Last Name" maxLength={20} /></div>
                   </div>
-                  <Field label="Nickname" value={guestName} onChange={setGuestName} placeholder="CoolNickname" maxLength={20} />
+                  <Field label="Nickname" value={guestName} onChange={setGuestName} placeholder="CoolNickname" maxLength={20} required />
                   <div className="input-row">
                     <div style={{ flex: 1 }}>
-                      <Field label="DOB (YYYY-MM-DD)" type="date" value={dob} onChange={setDob} placeholder="YYYY-MM-DD" />
+                      <Field label="DOB (YYYY-MM-DD)" type="date" value={dob} onChange={setDob} placeholder="YYYY-MM-DD" required />
                     </div>
                     <div style={{ flex: 1 }}>
                       <div className="input-group">
@@ -1139,9 +1140,9 @@ export default function Login() {
                       </div>
                     </div>
                   </div>
-                  <CountrySelect value={countryId} onChange={setCountryId} />
+                  <CountrySelect value={countryId} onChange={setCountryId} required />
                   <p className="field-hint">Please verify your details above.</p>
-                  <button className="btn-gold" onClick={handleOAuthUsername} disabled={loading || !regName || !guestName}>
+                  <button className="btn-gold" onClick={handleOAuthUsername} disabled={loading || !regName || !guestName || !countryId || !dob}>
                     {loading ? 'Saving…' : 'Complete Profile & Play 🎮'}
                   </button>
                 </div>

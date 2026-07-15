@@ -13,7 +13,7 @@ const selectStyle = {
   boxSizing: 'border-box',
 };
 
-export default function CountrySelect({ value, onChange, disabled = false }) {
+export default function CountrySelect({ value, onChange, disabled = false, required = false }) {
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -80,7 +80,7 @@ export default function CountrySelect({ value, onChange, disabled = false }) {
 
   return (
     <div className="input-group country-select" ref={containerRef}>
-      <label>Country</label>
+      <label>Country{required && <span style={{ color: '#FF5A5A', marginLeft: '3px' }}>*</span>}</label>
       <div className="country-select-control">
         <button
           type="button"

@@ -9,8 +9,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { tempToken, firstName, lastName, nickname, guestSessionId, countryId, dob, gender } = req.body || {};
-  if (!tempToken || !firstName || !nickname) {
-    return res.status(400).json({ error: 'First Name and Nickname are required.' });
+  if (!tempToken || !firstName || !nickname || !countryId || !dob) {
+    return res.status(400).json({ error: 'First Name, Nickname, Country, and DOB are required.' });
   }
 
   const decoded = verifyJWT(tempToken);
