@@ -23,11 +23,18 @@ export default function CountrySelect({ value, onChange, disabled = false }) {
   useEffect(() => {
     let cancelled = false;
     apiFetch('/api/countries')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) {
+          console.error('Failed to fetch countries, HTTP:', r.status);
+        }
+        return r.json();
+      })
       .then((d) => {
         if (!cancelled && d.countries) setCountries(d.countries);
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Error fetching countries:', err);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
