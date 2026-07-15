@@ -3913,7 +3913,7 @@ export default function Home() {
                     </div>
 
                     {/* Right: Friends & Party */}
-                    {userType === 'offline' ? null : userType === 'registered' ? (
+                    {userType === 'registered' && (
                         <div className="ls-menu-friends-col" ref={friendsSectionRef}>
                             {friendMessage && <div className="ls-alert-success" style={{ marginBottom: '12px' }}>{friendMessage}</div>}
 
@@ -4047,7 +4047,8 @@ export default function Home() {
                                 </div>
                             </div>
                         </div>
-                    ) : (
+                    )}
+                    {userType !== 'offline' && userType !== 'registered' && (
                         <div className="ls-menu-friends-col">
                             <div className="ls-card ls-friends-card">
                                 {/* Header always visible; body toggles on mobile */}
@@ -4086,7 +4087,7 @@ export default function Home() {
                                 </div>
                             </div>
                         </div>
-                    ) : null)
+                    )}
                 </div>
             </PageShell>
         );
