@@ -2526,6 +2526,7 @@ export default function Home() {
     const summaryTimerRef = useRef(null);
     const [soundSettings, setSoundSettings] = useState(() => loadSoundSettings());
     const [showSettingsModal, setShowSettingsModal] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const soundSettingsRef = useRef(soundSettings);
     useEffect(() => { soundSettingsRef.current = soundSettings; }, [soundSettings]);
     useEffect(() => { setSoundSettings(loadSoundSettings()); }, []);
@@ -3046,7 +3047,12 @@ export default function Home() {
         setLobbyAction('join');
     };
 
-    const handleLogout = async () => {
+    const handleLogout = () => {
+        setShowLogoutConfirm(true);
+    };
+
+    const confirmLogout = async () => {
+        setShowLogoutConfirm(false);
         try {
             const res = await apiFetch('/api/auth/logout', { method: 'POST' });
             if (res.ok) { clearToken(); if (socket) socket.disconnect(); router.replace('/login'); }
@@ -3836,6 +3842,23 @@ export default function Home() {
         return wrapScreen(
             <PageShell wide>
                 <Head><title>LeastScore — Home</title></Head>
+                {showLogoutConfirm && (
+                    <div className="ls-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="logout-confirm-title" onClick={() => setShowLogoutConfirm(false)}>
+                        <div className="ls-confirm-card" onClick={(e) => e.stopPropagation()}>
+                            <div className="ls-confirm-icon">🚪</div>
+                            <h3 id="logout-confirm-title">Log out of LeastScore?</h3>
+                            <p>You’ll need to sign in again before you can continue playing.</p>
+                            <div className="ls-confirm-actions">
+                                <button type="button" className="ls-confirm-btn ls-confirm-btn-secondary" onClick={() => setShowLogoutConfirm(false)}>
+                                    Cancel
+                                </button>
+                                <button type="button" className="ls-confirm-btn ls-confirm-btn-danger" onClick={confirmLogout}>
+                                    Log out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <div className="ls-main-menu-grid">
                     {/* Left: Game modes */}
                     <div className="ls-main-menu-game-col">
