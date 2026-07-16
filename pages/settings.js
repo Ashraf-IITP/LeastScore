@@ -136,7 +136,7 @@ export default function SettingsPage() {
 
           <div className="scroll-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div className="card-surface" style={{ width: '100%', maxWidth: '520px' }}>
-              <button className="btn-back" onClick={cancel}>
+              <button className="btn-back" onClick={(e) => { e.preventDefault(); router.back(); }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
@@ -164,7 +164,7 @@ export default function SettingsPage() {
                           {`${firstName} ${lastName}`.trim() || nickname}
                         </div>
                       </div>
-                      <button onClick={() => router.push('/change-name')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
+                      <button onClick={(e) => { e.preventDefault(); if (!saving) { setSaving(true); router.push('/change-name'); } }} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
                         Edit
                       </button>
                     </div>
@@ -177,7 +177,7 @@ export default function SettingsPage() {
                         <div style={{ fontSize: '15px', fontWeight: 600, color: resolvedTheme === 'light' ? '#1E4D32' : '#F0F4FF' }}>🔒 Change Password</div>
                         <div style={{ fontSize: '12px', color: '#8896A7', marginTop: '2px' }}>Update your login password</div>
                       </div>
-                      <button onClick={() => router.push('/change-password')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
+                      <button onClick={(e) => { e.preventDefault(); if (!saving) { setSaving(true); router.push('/change-password'); } }} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
                         Update
                       </button>
                     </div>
