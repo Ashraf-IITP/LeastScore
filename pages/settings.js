@@ -101,7 +101,7 @@ export default function SettingsPage() {
   }, [router]);
 
   const cancel = () => {
-    router.push('/');
+    router.replace('/');
   };
 
 

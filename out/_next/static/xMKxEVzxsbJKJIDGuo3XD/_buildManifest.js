@@ -9,7 +9,7 @@ self.__BUILD_MANIFEST = {
     "static/chunks/093r4ct-eyq97.js"
   ],
   "/change-password": [
-    "static/chunks/0.yw555d_qr6m.js"
+    "static/chunks/0e0sl7q.soyjr.js"
   ],
   "/login": [
     "static/chunks/0k0~5pv8cnzpl.js"
@@ -18,7 +18,7 @@ self.__BUILD_MANIFEST = {
     "static/chunks/0eg_rk0vcpq-a.js"
   ],
   "/reset-password": [
-    "static/chunks/0yljhin53~-xj.js"
+    "static/chunks/0vdupr61zbp8_.js"
   ],
   "/rules": [
     "static/chunks/0o~xug3l2_woa.js"

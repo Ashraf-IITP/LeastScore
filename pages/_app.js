@@ -15,6 +15,20 @@ export default function App({ Component, pageProps }) {
       if (current === 'system') applyTheme('system');
     };
     mq.addEventListener('change', onChange);
+
+    // Setup global hardware back button handler for Capacitor
+    if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform()) {
+      import('@capacitor/app').then(({ App }) => {
+        App.addListener('backButton', ({ canGoBack }) => {
+          if (canGoBack) {
+            window.history.back();
+          } else {
+            App.minimizeApp();
+          }
+        });
+      }).catch(err => console.error('Failed to load Capacitor App plugin:', err));
+    }
+
     return () => mq.removeEventListener('change', onChange);
   }, []);
 

@@ -2644,27 +2644,74 @@ export default function Home() {
         }
     }, [getInternalNavState]);
 
+    // Refs needed by the popstate handler (defined here so they're accessible in the closure)
+    const goBackHomeRef = useRef(null);
+
     useEffect(() => {
         const handlePopState = (e) => {
             const state = e.state;
-            // If user is currently playing a game and they swiped/back, treat as Exit
+
+            // ── 1. Settings modal open inside a game → close modal only
+            if (showSettingsModalRef.current) {
+                isPopstateNavigationRef.current = true;
+                setShowSettingsModal(false);
+                return;
+            }
+
+            // ── 2. Game over / leaderboard → dismiss to home (no exit prompt)
+            if (gameStateRef.current && gameStateRef.current.gameOver) {
+                isPopstateNavigationRef.current = true;
+                if (goBackHomeRef.current) goBackHomeRef.current();
+                return;
+            }
+
+            // ── 3. Active (non-over) game → ask to exit
             if (gameStateRef.current) {
                 isPopstateNavigationRef.current = true;
-                if (showSettingsModalRef.current) {
-                    setShowSettingsModal(false);
-                    return;
-                }
                 try { playSound('/sound/touch sound.wav', 'click'); } catch (err) { }
                 const isLocalGame = gameModeRef.current === 'pass_and_play' || gameModeRef.current === 'ai' || gameModeRef.current === 'play_along';
                 const msg = isLocalGame ? 'Do you want to end this game?' : 'Are you sure you want to exit? This will count as a declaration and your opponent will win.';
                 setTimeout(() => {
                     const confirmed = window.confirm(msg);
-                    if (confirmed && socketRef.current && myPlayerIndexRef.current !== null) {
-                        socketRef.current.emit('exitGame', matchRoomIdRef.current || matchRoomId, { playerId: myPlayerIndexRef.current });
+                    if (!confirmed) return;
+                    if (isLocalGame) {
+                        // Offline games have no socket – replicate exitGame() logic directly
+                        const gs = gameStateRef.current;
+                        if (!gs) return;
+                        const newState = JSON.parse(JSON.stringify(gs));
+                        newState.gameOver = true;
+                        const exitIndex = myPlayerIndexRef.current !== null ? myPlayerIndexRef.current : newState.currentPlayer;
+                        if (exitIndex !== null && newState.players[exitIndex]) {
+                            newState.players[exitIndex].eliminated = true;
+                            newState.players[exitIndex].eliminatedReason = 'exit';
+                            const activePlayers = newState.players
+                                .map((p, i) => ({ idx: i, score: p.score, eliminated: p.eliminated }))
+                                .filter(p => !p.eliminated);
+                            if (activePlayers.length === 1) {
+                                newState.winner = activePlayers[0].idx;
+                            } else if (activePlayers.length > 1) {
+                                newState.winner = [...activePlayers].sort((a, b) => a.score - b.score)[0].idx;
+                            } else {
+                                newState.winner = null;
+                            }
+                        }
+                        setBotReasoning(null);
+                        setOfflineBotThinking(false);
+                        setTurnFinishedScreen(false);
+                        setPassScreen(false);
+                        setVisibleIndex(null);
+                        setGameState(newState);
+                    } else {
+                        // Online game – emit server event
+                        if (socketRef.current && myPlayerIndexRef.current !== null) {
+                            socketRef.current.emit('exitGame', matchRoomIdRef.current || matchRoomId, { playerId: myPlayerIndexRef.current });
+                        }
                     }
                 }, 50);
                 return;
             }
+
+            // ── 4. Restore state from history entry
             if (state && state.internal) {
                 isPopstateNavigationRef.current = true;
                 if (inQueueRef.current && socketRef.current) {
@@ -2676,8 +2723,10 @@ export default function Home() {
                     }
                     socketRef.current.emit('leaveLobby', lobbyIdRef.current);
                 }
+                // tutorial_observe back → go to tutorial, not home
+                const restoredGameMode = state.gameMode === 'tutorial_observe' ? 'tutorial' : state.gameMode;
                 setConnected(state.connected);
-                setGameMode(state.gameMode);
+                setGameMode(restoredGameMode);
                 setLobbyAction(state.lobbyAction);
                 setLobbyId(state.lobbyId || '');
                 setJoinViaUrl(state.joinViaUrl);
@@ -2688,6 +2737,7 @@ export default function Home() {
                 return;
             }
 
+            // ── 5. No history state – clear everything back to home
             if (showSettingsModalRef.current || connectedRef.current || gameModeRef.current !== null || showMatchHistoryRef.current) {
                 isPopstateNavigationRef.current = true;
                 if (inQueueRef.current && socketRef.current) {
@@ -2710,6 +2760,13 @@ export default function Home() {
                 setJoinViaUrl(false);
                 if (socketRef.current) {
                     socketRef.current.disconnect();
+                }
+            } else {
+                // If we are already at the root Home screen and back is pressed, minimize the app
+                if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform()) {
+                    import('@capacitor/app').then(({ App }) => {
+                        App.minimizeApp();
+                    }).catch(() => {});
                 }
             }
         };
@@ -3468,6 +3525,8 @@ export default function Home() {
         setIsLobbyCreator(false); setLobbyReadyToStart(false); setFillLobbyWithBots(false);
         setFriendsEasyBotCount(0); setFriendsHardBotCount(0); setActiveMatchPrompt(null); setBotReasoning(null);
     };
+    // Keep the ref in sync so the popstate handler can call it without stale closure
+    useEffect(() => { goBackHomeRef.current = goBackHome; });
 
     // ── Offline: Play with AI (no socket) ────────────────────
     const startAIGame = () => {
@@ -4155,9 +4214,7 @@ export default function Home() {
                         className="btn-secondary"
                         style={{ marginBottom: '10px' }}
                         onClick={() => {
-                            if (typeof window !== 'undefined' && typeof getInternalNavState === 'function') {
-                                try { window.history.pushState(getInternalNavState(), '', ''); } catch (e) { /* ignore */ }
-                            }
+                            // No manual pushState here — getInternalNavState effect handles history sync
                             if (socket && username) {
                                 socket.emit('tutorialPresence', { username, inTutorial: true, mode: 'rules' });
                             }
@@ -4170,10 +4227,7 @@ export default function Home() {
                         className="btn-secondary"
                         style={{ marginBottom: '10px' }}
                         onClick={() => {
-                            if (typeof window !== 'undefined' && typeof getInternalNavState === 'function') {
-                                const nextState = { ...getInternalNavState(), gameMode: 'tutorial_observe' };
-                                try { window.history.pushState(nextState, '', ''); } catch (e) { /* ignore */ }
-                            }
+                            // No manual pushState — getInternalNavState effect pushes the new state automatically
                             setGameMode('tutorial_observe');
                         }}
                     >
