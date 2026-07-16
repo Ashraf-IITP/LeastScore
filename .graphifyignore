@@ -1,0 +1,20 @@
+# Dependencies
+node_modules
+.next
+android
+
+# Environment Variables
+.env
+.env.local
+.env.production
+.env.development
+.env.*
+
+# Static Assets & Generated Files
+public
+package-lock.json
+leastscore-release.keystore
+
+# Graphify Specific
+graph.json
+GRAPH_REPORT.md

@@ -3677,11 +3677,28 @@ export default function Home() {
             const confirmed = window.confirm(msg);
             if (!confirmed) return;
             if (isLocalGame) {
-                // For offline games just go back to menu
-                setGameState(null); setGameMode(null); setPlayAlongHint(null); setLobbyAction(null);
-                setConnected(false); setMyPlayerIndex(null); setSelectedCards([]); setDrawFrom(null);
-                setVisibleIndex(null); setMatchRoomId(''); setBotReasoning(null); setOfflineBotThinking(false);
-                setRoundSummary(null); setPassScreen(false); setTurnFinishedScreen(false);
+                const newState = JSON.parse(JSON.stringify(gameState));
+                newState.gameOver = true;
+                const exitIndex = myPlayerIndex !== null ? myPlayerIndex : newState.currentPlayer;
+                if (exitIndex !== null && newState.players[exitIndex]) {
+                    newState.players[exitIndex].eliminated = true;
+                    newState.players[exitIndex].eliminatedReason = 'exit';
+                    const activePlayers = newState.players.map((p, i) => ({ idx: i, score: p.score, eliminated: p.eliminated })).filter(p => !p.eliminated);
+                    if (activePlayers.length === 1) {
+                        newState.winner = activePlayers[0].idx;
+                    } else if (activePlayers.length > 1) {
+                        const rankedByScore = activePlayers.sort((a, b) => a.score - b.score);
+                        newState.winner = rankedByScore[0].idx;
+                    } else {
+                        newState.winner = null;
+                    }
+                }
+                setBotReasoning(null);
+                setOfflineBotThinking(false);
+                setTurnFinishedScreen(false);
+                setPassScreen(false);
+                setVisibleIndex(null);
+                setGameState(newState);
             } else {
                 if (socket && gameState && myPlayerIndex !== null) socket.emit('exitGame', matchRoomId, { playerId: myPlayerIndex });
             }
