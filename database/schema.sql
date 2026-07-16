@@ -42,7 +42,6 @@ CREATE TABLE `guest_sessions` (
 
 LOCK TABLES `guest_sessions` WRITE;
 /*!40000 ALTER TABLE `guest_sessions` DISABLE KEYS */;
-INSERT INTO `guest_sessions` VALUES (1,'Ryan','1234',NULL,'2026-04-28 12:12:43','2026-04-21 12:12:43');
 /*!40000 ALTER TABLE `guest_sessions` ENABLE KEYS */;
 UNLOCK TABLES;
 
