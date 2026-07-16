@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
+import { apiFetch } from '../lib/apiFetch';
 import {
   MiniCardRow,
   LastDrawChip,
@@ -1742,7 +1743,7 @@ export default function MatchHistory({ onBack }) {
       setLoading(true);
       setError('');
       try {
-        const res = await fetch('/api/matches');
+        const res = await apiFetch('/api/matches');
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to load matches');
         if (!cancelled) setMatches(data.matches || []);
@@ -1765,7 +1766,7 @@ export default function MatchHistory({ onBack }) {
       setDetailLoading(true);
       setError('');
       try {
-        const res = await fetch(`/api/matches/${selectedId}`);
+        const res = await apiFetch(`/api/matches/${selectedId}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to load match');
         if (!cancelled) {
