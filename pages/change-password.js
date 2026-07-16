@@ -49,7 +49,7 @@ export default function ChangePasswordPage() {
         if (d.token) saveToken(d.token);
         setSuccess('Password updated successfully!');
         setCurrentPass(''); setNewPass(''); setConfirmPass('');
-        setTimeout(() => router.replace('/settings'), 1500);
+        setTimeout(() => router.back(), 1500);
       }
     } catch { setError('An unexpected error occurred.'); }
     finally { setLoading(false); }
@@ -296,7 +296,7 @@ export default function ChangePasswordPage() {
         <div className="rp-frame">
           <div className="rp-bg-mesh" />
           <div className="rp-content">
-            <button className="rp-back" onClick={() => router.replace('/settings')}>← Back</button>
+            <button className="rp-back" onClick={() => router.back()}>← Back</button>
 
             <div className="rp-header">
               <span className="rp-icon">🔑</span>
