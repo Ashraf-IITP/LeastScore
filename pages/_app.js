@@ -1,13 +1,9 @@
 // pages/_app.js — Applies theme on mount, listens for system changes
 import { useEffect } from 'react';
-import { useRouter } from 'next/router';
 import { loadTheme, applyTheme } from '../lib/themeSettings';
-import { handleNativeBack } from '../lib/appNavigation';
 import '../styles/theme.css';
 
 export default function App({ Component, pageProps }) {
-  const router = useRouter();
-
   useEffect(() => {
     const pref = loadTheme();
     applyTheme(pref);
@@ -24,7 +20,6 @@ export default function App({ Component, pageProps }) {
     if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform()) {
       import('@capacitor/app').then(({ App }) => {
         App.addListener('backButton', ({ canGoBack }) => {
-          if (handleNativeBack(router)) return;
           if (canGoBack) {
             window.history.back();
           } else {
@@ -35,7 +30,7 @@ export default function App({ Component, pageProps }) {
     }
 
     return () => mq.removeEventListener('change', onChange);
-  }, [router]);
+  }, []);
 
   return <Component {...pageProps} />;
 }

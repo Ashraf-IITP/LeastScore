@@ -767,10 +767,6 @@ export default function Login() {
         .btn-gold:disabled { opacity: 0.55; cursor: not-allowed; }
 
         .btn-back {
-          position: fixed;
-          top: 20px;
-          left: 20px;
-          z-index: 9999;
           background: transparent;
           border: none;
           color: #FF5A5A;
@@ -778,6 +774,7 @@ export default function Login() {
           font-size: 13px;
           font-weight: 600;
           padding: 0;
+          margin-bottom: 20px;
           cursor: pointer;
           display: inline-flex;
           align-items: center;

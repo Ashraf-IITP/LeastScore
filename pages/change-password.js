@@ -4,7 +4,6 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { apiFetch } from '../lib/apiFetch';
 import { saveToken } from '../lib/tokenStorage';
-import { navigateBackToSettings } from '../lib/appNavigation';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -50,7 +49,7 @@ export default function ChangePasswordPage() {
         if (d.token) saveToken(d.token);
         setSuccess('Password updated successfully!');
         setCurrentPass(''); setNewPass(''); setConfirmPass('');
-        setTimeout(() => navigateBackToSettings(router), 1500);
+        setTimeout(() => router.back(), 1500);
       }
     } catch { setError('An unexpected error occurred.'); }
     finally { setLoading(false); }
@@ -138,13 +137,9 @@ export default function ChangePasswordPage() {
         }
         @keyframes cardIn { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .rp-back {
-          position: fixed;
-          top: 20px;
-          left: 20px;
-          z-index: 9999;
           background: transparent; border: none; color: #FF5A5A;
           font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
-          padding: 0; cursor: pointer;
+          padding: 0; margin-bottom: 24px; cursor: pointer;
           display: inline-flex; align-items: center; gap: 4px;
           transition: color 0.2s, transform 0.15s;
           text-shadow: 0 0 12px rgba(255,90,90,0.7);
@@ -301,7 +296,7 @@ export default function ChangePasswordPage() {
         <div className="rp-frame">
           <div className="rp-bg-mesh" />
           <div className="rp-content">
-            <button className="rp-back" onClick={() => navigateBackToSettings(router)}>← Back</button>
+            <button className="rp-back" onClick={() => router.back()}>← Back</button>
 
             <div className="rp-header">
               <span className="rp-icon">🔑</span>

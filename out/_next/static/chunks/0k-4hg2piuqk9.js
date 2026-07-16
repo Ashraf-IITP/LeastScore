@@ -3128,6 +3128,10 @@ In a real match you cannot see opponents' hands. Someone may have a lower sum an
 
   /* Back button — identical to login.js .btn-back */
   .btn-back {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 9999;
     background: transparent;
     border: none;
     color: #FF5A5A;
@@ -3135,7 +3139,6 @@ In a real match you cannot see opponents' hands. Someone may have a lower sum an
     font-size: 13px;
     font-weight: 600;
     padding: 0;
-    margin-bottom: 20px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;

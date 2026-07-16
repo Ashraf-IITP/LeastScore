@@ -51,9 +51,13 @@
         }
         @keyframes cardIn { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .rp-back {
+          position: fixed;
+          top: 20px;
+          left: 20px;
+          z-index: 9999;
           background: transparent; border: none; color: #FF5A5A;
           font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
-          padding: 0; margin-bottom: 24px; cursor: pointer;
+          padding: 0; cursor: pointer;
           display: inline-flex; align-items: center; gap: 4px;
           transition: color 0.2s, transform 0.15s;
           text-shadow: 0 0 12px rgba(255,90,90,0.7);

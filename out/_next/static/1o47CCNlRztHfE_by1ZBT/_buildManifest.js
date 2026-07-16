@@ -1,6 +1,6 @@
 self.__BUILD_MANIFEST = {
   "/": [
-    "static/chunks/0yo6rbko~kq4y.js"
+    "static/chunks/0_wlzb3da2g9v.js"
   ],
   "/_error": [
     "static/chunks/14-hro.jp~eje.js"
@@ -9,10 +9,10 @@ self.__BUILD_MANIFEST = {
     "static/chunks/17323n1of9~q_.js"
   ],
   "/change-password": [
-    "static/chunks/0cxqdslswf-dg.js"
+    "static/chunks/07f-sfmuzxzlc.js"
   ],
   "/login": [
-    "static/chunks/0w1xq_274i037.js"
+    "static/chunks/0l7.om07vqm5r.js"
   ],
   "/oauth-callback": [
     "static/chunks/05m~_qd.4jst2.js"
@@ -21,10 +21,10 @@ self.__BUILD_MANIFEST = {
     "static/chunks/12h1oh1q39ajq.js"
   ],
   "/rules": [
-    "static/chunks/08b-ge3rz2qld.js"
+    "static/chunks/161od5rb-vd65.js"
   ],
   "/settings": [
-    "static/chunks/07ps5r4k5y7ka.js"
+    "static/chunks/0g2q~.-74.91g.js"
   ],
   "__rewrites": {
     "afterFiles": [],
