@@ -118,7 +118,7 @@ export default function ChangeNamePage() {
         return;
       }
       setSuccess('Profile updated! Redirecting…');
-      setTimeout(() => router.replace('/settings'), 500);
+      setTimeout(() => router.back(), 500);
     } catch (err) {
       console.error(err);
       setError('Unable to update profile.');
@@ -127,7 +127,7 @@ export default function ChangeNamePage() {
   };
 
   const cancel = () => {
-    router.replace('/settings');
+    router.back();
   };
 
   if (loading) {
