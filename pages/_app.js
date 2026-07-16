@@ -16,20 +16,15 @@ export default function App({ Component, pageProps }) {
     };
     mq.addEventListener('change', onChange);
 
-    // Setup global hardware back button handler for Capacitor.
-    // IMPORTANT: On Android, the swipe-back gesture fires this event AND the
-    // WebView handles the history pop natively. Calling history.back() here too
-    // would consume a second history entry (double-back bug). So we only
-    // intercept the "nothing to go back to" case to minimize the app instead of
-    // exiting, and let all other back navigation be handled natively by Android.
+    // Setup global hardware back button handler for Capacitor
     if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform()) {
       import('@capacitor/app').then(({ App }) => {
         App.addListener('backButton', ({ canGoBack }) => {
-          if (!canGoBack) {
+          if (canGoBack) {
+            window.history.back();
+          } else {
             App.minimizeApp();
           }
-          // When canGoBack is true, do nothing — the WebView/Android OS already
-          // handles the history.go(-1) natively for both hardware button and swipe.
         });
       }).catch(err => console.error('Failed to load Capacitor App plugin:', err));
     }

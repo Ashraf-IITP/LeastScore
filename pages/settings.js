@@ -21,8 +21,7 @@ export default function SettingsPage() {
   const [themePref, setThemePref] = useState('system');
   const [resolvedTheme, setResolvedTheme] = useState('dark');
 
-  // Reset saving flag on every mount (in case user navigated back via replace)
-  useEffect(() => { setSaving(false); }, []);
+
 
   // Sounds
   useEffect(() => {
