@@ -57,7 +57,7 @@ export default async function handler(req, res) {
           </div>
         </div>
       `,
-      text: \`Hello,\n\nYour LeastScore verification code is:\n\n\${otp}\n\nIt is valid for 10 minutes.\n\nIf you didn't request this, please ignore.\`,
+      text: `Hello,\n\nYour LeastScore verification code is:\n\n${otp}\n\nIt is valid for 10 minutes.\n\nIf you didn't request this, please ignore.`,
     });
 
     return res.json({ ok: true });
