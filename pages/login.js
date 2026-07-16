@@ -61,6 +61,12 @@ export default function Login() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
 
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupOtp, setSignupOtp] = useState('');
+  const [signupOtpSent, setSignupOtpSent] = useState(false);
+  const [signupOtpVerified, setSignupOtpVerified] = useState(false);
+  const [signupPass, setSignupPass] = useState('');
+
   const [regName, setRegName] = useState('');
   const [regTag, setRegTag] = useState('');
 
@@ -242,6 +248,38 @@ export default function Login() {
     router.replace('/');
   });
 
+  const handleSignupSendOtp = () => go(async () => {
+    const d = await post('/api/auth/otp/send', { email: signupEmail });
+    if (d.error) return setError(d.error);
+    setSignupOtpSent(true);
+    setSuccess('Verification code sent to your email.');
+  });
+
+  const handleSignupVerifyOtp = () => go(async () => {
+    const d = await post('/api/auth/otp/verify', { email: signupEmail, otp: signupOtp });
+    if (d.error) return setError(d.error);
+    setSignupOtpVerified(true);
+    setSuccess('Email verified. Please complete your profile.');
+  });
+
+  const handleSignupRegister = () => go(async () => {
+    const d = await post('/api/auth/register', {
+      email: signupEmail,
+      otp: signupOtp,
+      firstName: regName,
+      lastName: regTag,
+      nickname: guestName,
+      dob,
+      gender,
+      countryId,
+      password: signupPass,
+      guestSessionId: upgradeGuestSessionId || undefined
+    });
+    if (d.error) return setError(d.error);
+    if (d.token) saveToken(d.token);
+    router.replace('/');
+  });
+
   // const handleOAuth = (provider) => {
   //   const isMobile = typeof window !== 'undefined' && !!window.Capacitor;
   //   const base = process.env.NEXT_PUBLIC_API_URL || '';
@@ -318,7 +356,15 @@ export default function Login() {
     }
   };
 
-  const changeView = (v) => { setView(v); setError(''); setSuccess(''); setForgotSent(false); setForgotEmail(''); };
+  const changeView = (v) => { 
+    setView(v); 
+    setError(''); 
+    setSuccess(''); 
+    setForgotSent(false); 
+    setForgotEmail(''); 
+    setSignupOtpSent(false);
+    setSignupOtpVerified(false);
+  };
 
   if (checking) return (
     <div className="mobile-app-container">
@@ -1031,9 +1077,73 @@ export default function Login() {
 
                       <div className="footer-links">
                         <span className="link-text" onClick={() => changeView('login')}>
-                          Login with email & password
+                          Login with email
+                        </span>
+                        <span style={{ color: '#8896A7', margin: '0 8px' }}>•</span>
+                        <span className="link-text" onClick={() => changeView('signup')}>
+                          Sign up
                         </span>
                       </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ── SIGNUP VIEW ── */}
+              {view === 'signup' && (
+                <div className="view-animate">
+                  <button className="btn-back" onClick={() => changeView('main')}>← Back</button>
+                  <h2 className="view-title">Create Account</h2>
+                  
+                  {!signupOtpVerified ? (
+                    <>
+                      <p className="view-desc">Enter your email to receive a verification code.</p>
+                      <Field label="Email Address" type="email" value={signupEmail} onChange={setSignupEmail} placeholder="you@example.com" disabled={signupOtpSent} required />
+                      
+                      {signupOtpSent && (
+                        <Field label="Verification Code" value={signupOtp} onChange={setSignupOtp} placeholder="123456" maxLength={6} required />
+                      )}
+                      
+                      {!signupOtpSent ? (
+                        <button className="btn-primary mt-4" onClick={handleSignupSendOtp} disabled={loading || !signupEmail.includes('@')}>
+                          {loading ? 'Sending…' : 'Send Code'}
+                        </button>
+                      ) : (
+                        <button className="btn-primary mt-4" onClick={handleSignupVerifyOtp} disabled={loading || signupOtp.length < 6}>
+                          {loading ? 'Verifying…' : 'Verify Code'}
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="view-desc">Complete your profile details.</p>
+                      <div className="input-row">
+                        <div style={{ flex: 1 }}><Field label="First Name" value={regName} onChange={setRegName} placeholder="First Name" maxLength={20} required /></div>
+                        <div style={{ flex: 1 }}><Field label="Last Name" value={regTag} onChange={setRegTag} placeholder="Last Name" maxLength={20} /></div>
+                      </div>
+                      <Field label="Nickname" value={guestName} onChange={setGuestName} placeholder="CoolNickname" maxLength={20} required />
+                      <div className="input-row">
+                        <div style={{ flex: 1 }}>
+                          <Field label="DOB" type="date" value={dob} onChange={setDob} required />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div className="input-group">
+                            <label>Gender</label>
+                            <select value={gender} onChange={e => setGender(e.target.value)} style={{ width: '100%', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', color: '#F0F4FF', padding: '13px 15px', borderRadius: '13px', fontSize: '15px', outline: 'none' }}>
+                              <option value="">Select Gender</option>
+                              <option value="male">Male</option>
+                              <option value="female">Female</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      <CountrySelect value={countryId} onChange={setCountryId} required />
+                      <Field label="Password" type="password" value={signupPass} onChange={setSignupPass} placeholder="At least 6 characters" required />
+                      
+                      <button className="btn-gold mt-4" onClick={handleSignupRegister} disabled={loading || !regName || !guestName || !countryId || !dob || signupPass.length < 6}>
+                        {loading ? 'Creating…' : 'Create Account & Play 🎮'}
+                      </button>
                     </>
                   )}
                 </div>

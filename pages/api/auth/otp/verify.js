@@ -4,18 +4,18 @@ import { getPool } from '../../../../lib/db';
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { phone, otp } = req.body || {};
-  if (!phone || !otp) {
-    return res.status(400).json({ error: 'Phone and OTP are required.' });
+  const { email, otp } = req.body || {};
+  if (!email || !otp) {
+    return res.status(400).json({ error: 'Email and OTP are required.' });
   }
 
   try {
     const pool = getPool();
     const [rows] = await pool.query(
       `SELECT id FROM otp_sessions
-       WHERE phone = ? AND otp_code = ? AND expires_at > NOW() AND verified = 0
+       WHERE email = ? AND otp_code = ? AND expires_at > NOW() AND verified = 0
        ORDER BY created_at DESC LIMIT 1`,
-      [phone, String(otp).trim()]
+      [email, String(otp).trim()]
     );
 
     if (!rows.length) {

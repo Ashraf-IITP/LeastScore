@@ -39,6 +39,15 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: 'An account with this email already exists.' });
     }
 
+    // Verify OTP session
+    const [otpRows] = await pool.query(
+      'SELECT id FROM otp_sessions WHERE email = ? AND verified = 1 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
+      [normalizedEmail]
+    );
+    if (!otpRows.length) {
+      return res.status(400).json({ error: 'Email verification required. Please verify your email first.' });
+    }
+
     if (guestSessionId) {
       const currentUser = getUserFromRequest(req);
       if (

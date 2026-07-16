@@ -55,13 +55,13 @@ DROP TABLE IF EXISTS `otp_sessions`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `otp_sessions` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `phone` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `otp_code` char(6) COLLATE utf8mb4_unicode_ci NOT NULL,
   `expires_at` timestamp NOT NULL COMMENT 'Valid for 10 minutes from creation.',
   `verified` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_phone_expires` (`phone`,`expires_at`)
+  KEY `idx_email_expires` (`email`,`expires_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
