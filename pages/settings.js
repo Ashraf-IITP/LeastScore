@@ -5,6 +5,7 @@ import { loadSoundSettings, saveSoundSettings, DEFAULT_SOUND_SETTINGS } from '..
 import { playBGM, setBGMVolume } from '../lib/bgm';
 import { loadTheme, saveTheme, applyTheme, resolveTheme } from '../lib/themeSettings';
 import { apiFetch } from '../lib/apiFetch';
+import { navigateBackFromSettings } from '../lib/appNavigation';
 
 
 export default function SettingsPage() {
@@ -101,7 +102,7 @@ export default function SettingsPage() {
   }, [router]);
 
   const cancel = () => {
-    router.back();
+    navigateBackFromSettings(router);
   };
 
 

@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { playBGM } from '../lib/bgm';
 import { loadSoundSettings, getVolumeForCategory } from '../lib/soundSettings';
 import { apiFetch } from '../lib/apiFetch';
+import { navigateBackToSettings } from '../lib/appNavigation';
 
 function Field({ label, type = 'text', value, onChange, placeholder, maxLength, autoComplete }) {
   return (
@@ -118,7 +119,7 @@ export default function ChangeNamePage() {
         return;
       }
       setSuccess('Profile updated! Redirecting…');
-      setTimeout(() => router.back(), 500);
+      setTimeout(() => navigateBackToSettings(router), 500);
     } catch (err) {
       console.error(err);
       setError('Unable to update profile.');
@@ -127,7 +128,7 @@ export default function ChangeNamePage() {
   };
 
   const cancel = () => {
-    router.back();
+    navigateBackToSettings(router);
   };
 
   if (loading) {

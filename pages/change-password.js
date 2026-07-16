@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { apiFetch } from '../lib/apiFetch';
 import { saveToken } from '../lib/tokenStorage';
+import { navigateBackToSettings } from '../lib/appNavigation';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -49,7 +50,7 @@ export default function ChangePasswordPage() {
         if (d.token) saveToken(d.token);
         setSuccess('Password updated successfully!');
         setCurrentPass(''); setNewPass(''); setConfirmPass('');
-        setTimeout(() => router.back(), 1500);
+        setTimeout(() => navigateBackToSettings(router), 1500);
       }
     } catch { setError('An unexpected error occurred.'); }
     finally { setLoading(false); }
@@ -296,7 +297,7 @@ export default function ChangePasswordPage() {
         <div className="rp-frame">
           <div className="rp-bg-mesh" />
           <div className="rp-content">
-            <button className="rp-back" onClick={() => router.back()}>← Back</button>
+            <button className="rp-back" onClick={() => navigateBackToSettings(router)}>← Back</button>
 
             <div className="rp-header">
               <span className="rp-icon">🔑</span>
