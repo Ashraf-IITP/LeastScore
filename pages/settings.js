@@ -164,7 +164,7 @@ export default function SettingsPage() {
                           {`${firstName} ${lastName}`.trim() || nickname}
                         </div>
                       </div>
-                      <button onClick={() => router.push('/change-name')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
+                      <button onClick={() => router.replace('/change-name')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
                         Edit
                       </button>
                     </div>
@@ -177,7 +177,7 @@ export default function SettingsPage() {
                         <div style={{ fontSize: '15px', fontWeight: 600, color: resolvedTheme === 'light' ? '#1E4D32' : '#F0F4FF' }}>🔒 Change Password</div>
                         <div style={{ fontSize: '12px', color: '#8896A7', marginTop: '2px' }}>Update your login password</div>
                       </div>
-                      <button onClick={() => router.push('/change-password')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
+                      <button onClick={() => router.replace('/change-password')} className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', margin: 0, width: 'auto' }}>
                         Update
                       </button>
                     </div>

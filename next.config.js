@@ -4,7 +4,7 @@ const nextConfig = {
   // routes work when running the custom Express+Socket.io server (server.js).
   // For the Android/Capacitor static build, run: next build with output:export
   // temporarily set, or use a separate next.config.android.js.
-  // output: 'export',
+  output: 'export',
   images: {
     unoptimized: true,
   },
