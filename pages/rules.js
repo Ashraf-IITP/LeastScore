@@ -379,6 +379,10 @@ const GLOBAL_CSS = `
 
   /* Back button — identical to login.js .btn-back */
   .btn-back {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 9999;
     background: transparent;
     border: none;
     color: #FF5A5A;
@@ -386,7 +390,6 @@ const GLOBAL_CSS = `
     font-size: 13px;
     font-weight: 600;
     padding: 0;
-    margin-bottom: 20px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;

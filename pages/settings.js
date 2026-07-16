@@ -577,6 +577,10 @@ export default function SettingsPage() {
         .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .btn-back {
+          position: fixed;
+          top: 20px;
+          left: 20px;
+          z-index: 9999;
           background: transparent;
           border: none;
           color: #FF5A5A;
@@ -584,7 +588,6 @@ export default function SettingsPage() {
           font-size: 13px;
           font-weight: 600;
           padding: 0;
-          margin-bottom: 20px;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
