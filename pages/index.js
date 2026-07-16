@@ -2639,7 +2639,12 @@ export default function Home() {
         const stateChanged = !currentState || !currentState.internal || JSON.stringify(currentState) !== JSON.stringify(nextState);
 
         if (nextState.internal && stateChanged) {
-            window.history.pushState(nextState, '', '');
+            const isRootState = !nextState.gameMode && !nextState.showMatchHistory && !nextState.showSettingsModal && !nextState.inQueue && !nextState.inLobby;
+            if (isRootState || !currentState || !currentState.internal) {
+                window.history.replaceState(nextState, '', '');
+            } else {
+                window.history.pushState(nextState, '', '');
+            }
             internalNavRef.current = true;
         }
     }, [getInternalNavState]);

@@ -6,10 +6,10 @@ self.__BUILD_MANIFEST = {
     "static/chunks/17zwj7g1-klw9.js"
   ],
   "/change-name": [
-    "static/chunks/0zkmmeo0gkx1k.js"
+    "static/chunks/0srzryf4der5o.js"
   ],
   "/change-password": [
-    "static/chunks/0v107muwspa-~.js"
+    "static/chunks/0~vo2w1d_yu-~.js"
   ],
   "/login": [
     "static/chunks/0jcl4yt.dykqk.js"
@@ -24,7 +24,7 @@ self.__BUILD_MANIFEST = {
     "static/chunks/0o~xug3l2_woa.js"
   ],
   "/settings": [
-    "static/chunks/02_b15cxxhweh.js"
+    "static/chunks/0s1h7ci-qqhch.js"
   ],
   "__rewrites": {
     "afterFiles": [],
