@@ -18,6 +18,16 @@ export default async function handler(req, res) {
 
   try {
     const pool = getPool();
+
+    // Check if the user is already registered
+    const [existingUser] = await pool.query(
+      'SELECT id FROM users WHERE email = ?',
+      [normalizedEmail]
+    );
+    if (existingUser.length) {
+      return res.status(409).json({ error: 'This email is already registered. Please login instead.' });
+    }
+
     const otp  = generateOTP();
 
     // Delete any previous OTP for this email, then insert fresh one (10-min TTL)
