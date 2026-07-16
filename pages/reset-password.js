@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { apiFetch } from '../lib/apiFetch';
+import { saveToken } from '../lib/tokenStorage';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -50,6 +51,7 @@ export default function ResetPasswordPage() {
       });
       const d = await r.json();
       if (d.error) { setError(d.error); setLoading(false); return; }
+      if (d.token) saveToken(d.token);
       router.replace('/');
     } catch {
       setError('An unexpected error occurred. Please try again.');

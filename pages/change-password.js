@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { apiFetch } from '../lib/apiFetch';
+import { saveToken } from '../lib/tokenStorage';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -45,6 +46,7 @@ export default function ChangePasswordPage() {
       const d = await r.json();
       if (d.error) { setError(d.error); }
       else {
+        if (d.token) saveToken(d.token);
         setSuccess('Password updated successfully!');
         setCurrentPass(''); setNewPass(''); setConfirmPass('');
         setTimeout(() => router.push('/settings'), 1500);

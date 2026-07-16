@@ -53,7 +53,7 @@ export default async function handler(req, res) {
     });
     setAuthCookie(res, token);
 
-    return res.json({ ok: true });
+    return res.json({ ok: true, token });
   } catch (err) {
     console.error('[/api/auth/change-password]', err);
     return res.status(500).json({ error: 'Server error. Please try again.' });

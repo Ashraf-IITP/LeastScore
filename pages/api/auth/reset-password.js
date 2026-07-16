@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     });
     setAuthCookie(res, token);
 
-    return res.json({ ok: true });
+    return res.json({ ok: true, token });
   } catch (err) {
     console.error('[/api/auth/reset-password]', err);
     return res.status(500).json({ error: 'Failed to update password. Please try again.' });
