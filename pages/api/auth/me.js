@@ -2,6 +2,38 @@
 import { getUserFromRequest, buildDisplayName } from '../../../lib/auth';
 import { getPool } from '../../../lib/db';
 
+async function getUserColumns(pool) {
+  const [columns] = await pool.query('SHOW COLUMNS FROM users');
+  return new Set(columns.map((column) => column.Field));
+}
+
+function userSelectList(columns) {
+  const firstName = columns.has('first_name')
+    ? 'first_name'
+    : columns.has('display_name')
+      ? 'display_name AS first_name'
+      : 'NULL AS first_name';
+  const lastName = columns.has('last_name') ? 'last_name' : 'NULL AS last_name';
+
+  let nickname = 'NULL AS nickname';
+  if (columns.has('nickname')) {
+    nickname = 'nickname';
+  } else if (columns.has('display_name') && columns.has('tag')) {
+    nickname = "CONCAT(display_name, '#', tag) AS nickname";
+  } else if (columns.has('display_name')) {
+    nickname = 'display_name AS nickname';
+  }
+
+  const email = columns.has('email') ? 'email' : 'NULL AS email';
+  const authProvider = columns.has('auth_provider') ? 'auth_provider' : "'local' AS auth_provider";
+  const tokenVersion = columns.has('token_version') ? 'token_version' : '0 AS token_version';
+  const mustResetPassword = columns.has('must_reset_password')
+    ? 'must_reset_password'
+    : '0 AS must_reset_password';
+
+  return `id, ${firstName}, ${lastName}, ${nickname}, ${email}, ${authProvider}, ${tokenVersion}, ${mustResetPassword}`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
 
@@ -29,8 +61,10 @@ export default async function handler(req, res) {
 
     // Registered user — verify token_version matches DB
     const pool = getPool();
+    const userColumns = await getUserColumns(pool);
+    const selectUser = userSelectList(userColumns);
     const [rows] = await pool.query(
-      'SELECT id, first_name, last_name, nickname, email, auth_provider, token_version, must_reset_password FROM users WHERE id = ?',
+      `SELECT ${selectUser} FROM users WHERE id = ?`,
       [decoded.userId]
     );
     if (!rows.length || rows[0].token_version !== decoded.tokenVersion) {

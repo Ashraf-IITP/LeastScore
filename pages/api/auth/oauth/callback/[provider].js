@@ -13,7 +13,13 @@ async function exchangeGoogle(code, redirectUri) {
   const { data: profile } = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: { Authorization: `Bearer ${data.access_token}` },
   });
-  return { providerId: profile.sub, email: profile.email, firstName: profile.given_name, lastName: profile.family_name };
+  return {
+    providerId: profile.sub,
+    email: profile.email,
+    emailVerified: profile.email_verified === true,
+    firstName: profile.given_name,
+    lastName: profile.family_name,
+  };
 }
 
 async function exchangeFacebook(code, redirectUri) {
@@ -26,7 +32,7 @@ async function exchangeFacebook(code, redirectUri) {
   const { data: profile } = await axios.get('https://graph.facebook.com/me', {
     params: { fields: 'id,first_name,last_name,email', access_token: data.access_token },
   });
-  return { providerId: profile.id, email: profile.email, firstName: profile.first_name, lastName: profile.last_name };
+  return { providerId: profile.id, email: profile.email, emailVerified: true, firstName: profile.first_name, lastName: profile.last_name };
 }
 
 // ── Main handler ──────────────────────────────────────────────
@@ -132,10 +138,10 @@ export default async function handler(req, res) {
     }
 
     // No provider_id match — fallback: look up by email to link existing account
-    if (profile.email && userColumns.has('email')) {
+    if (profile.email && profile.emailVerified && userColumns.has('email')) {
       const normalizedEmail = profile.email.trim().toLowerCase();
       const [emailRows] = await pool.query(
-        `SELECT ${selectUser} FROM users WHERE email = ?`,
+        `SELECT ${selectUser} FROM users WHERE LOWER(email) = ?`,
         [normalizedEmail]
       );
       if (emailRows.length) {

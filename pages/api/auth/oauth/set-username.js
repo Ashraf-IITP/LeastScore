@@ -33,7 +33,7 @@ export default async function handler(req, res) {
   try {
     const pool = getPool();
 
-    const [existingEmail] = await pool.query('SELECT id FROM users WHERE email = ?', [normalizedEmail]);
+    const [existingEmail] = await pool.query('SELECT id FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
     if (existingEmail.length) {
       return res.status(409).json({ error: 'An account with this email already exists.' });
     }
