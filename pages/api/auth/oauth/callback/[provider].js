@@ -30,6 +30,33 @@ async function exchangeFacebook(code, redirectUri) {
 }
 
 // ── Main handler ──────────────────────────────────────────────
+async function getUserColumns(pool) {
+  const [columns] = await pool.query('SHOW COLUMNS FROM users');
+  return new Set(columns.map((column) => column.Field));
+}
+
+function userSelectList(columns) {
+  const firstName = columns.has('first_name')
+    ? 'first_name'
+    : columns.has('display_name')
+      ? 'display_name AS first_name'
+      : 'NULL AS first_name';
+  const lastName = columns.has('last_name') ? 'last_name' : 'NULL AS last_name';
+
+  let nickname = 'NULL AS nickname';
+  if (columns.has('nickname')) {
+    nickname = 'nickname';
+  } else if (columns.has('display_name') && columns.has('tag')) {
+    nickname = "CONCAT(display_name, '#', tag) AS nickname";
+  } else if (columns.has('display_name')) {
+    nickname = 'display_name AS nickname';
+  }
+
+  const email = columns.has('email') ? 'email' : 'NULL AS email';
+  const tokenVersion = columns.has('token_version') ? 'token_version' : '0 AS token_version';
+  return `id, ${firstName}, ${lastName}, ${nickname}, ${email}, ${tokenVersion}`;
+}
+
 export default async function handler(req, res) {
   const { provider, code, state, error } = req.query;
   const base = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -81,12 +108,16 @@ export default async function handler(req, res) {
     else return res.redirect(`/login?error=${encodeURIComponent('Unknown provider.')}`);
 
     const pool = getPool();
+    const userColumns = await getUserColumns(pool);
+    const selectUser = userSelectList(userColumns);
 
     // Check if user already exists
-    const [rows] = await pool.query(
-      'SELECT id, first_name, last_name, nickname, email, token_version FROM users WHERE auth_provider = ? AND provider_id = ?',
-      [provider, profile.providerId]
-    );
+    const [rows] = userColumns.has('auth_provider') && userColumns.has('provider_id')
+      ? await pool.query(
+        `SELECT ${selectUser} FROM users WHERE auth_provider = ? AND provider_id = ?`,
+        [provider, profile.providerId]
+      )
+      : [[]];
 
     if (rows.length) {
       // Existing user — log them in
@@ -101,18 +132,21 @@ export default async function handler(req, res) {
     }
 
     // No provider_id match — fallback: look up by email to link existing account
-    if (profile.email) {
+    if (profile.email && userColumns.has('email')) {
+      const normalizedEmail = profile.email.trim().toLowerCase();
       const [emailRows] = await pool.query(
-        'SELECT id, first_name, last_name, nickname, email, token_version FROM users WHERE email = ?',
-        [profile.email]
+        `SELECT ${selectUser} FROM users WHERE email = ?`,
+        [normalizedEmail]
       );
       if (emailRows.length) {
         const u = emailRows[0];
         // Backfill OAuth identity so future logins hit the fast path
-        await pool.query(
-          'UPDATE users SET auth_provider = ?, provider_id = ? WHERE id = ?',
-          [provider, profile.providerId, u.id]
-        );
+        if (userColumns.has('auth_provider') && userColumns.has('provider_id')) {
+          await pool.query(
+            'UPDATE users SET auth_provider = ?, provider_id = ? WHERE id = ?',
+            [provider, profile.providerId, u.id]
+          );
+        }
         const token = signJWT(buildRegisteredJWTPayload(u));
         if (isMobile) {
           return res.redirect(`cc.altius.leastscore://oauth?token=${encodeURIComponent(token)}&provider=${provider}`);
