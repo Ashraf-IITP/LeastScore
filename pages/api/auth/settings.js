@@ -1,4 +1,12 @@
-import { getUserFromRequest, signJWT, setAuthCookie, buildRegisteredJWTPayload } from '../../../lib/auth';
+import {
+  getUserFromRequest,
+  signJWT,
+  setAuthCookie,
+  buildRegisteredJWTPayload,
+  validateName,
+  isRegisteredProfileComplete,
+  getMissingProfileFields,
+} from '../../../lib/auth';
 import { getPool } from '../../../lib/db';
 
 export default async function handler(req, res) {
@@ -37,20 +45,49 @@ export default async function handler(req, res) {
     }
 
     if (decoded.type === 'registered') {
-      const { firstName, lastName, nickname } = req.body || {};
+      const body = req.body || {};
+      const { firstName, lastName, nickname, countryId, dob, gender } = body;
       if (!firstName || !nickname) return res.status(400).json({ error: 'First name and nickname are required.' });
+      if (!validateName(firstName) || !validateName(nickname)) {
+        return res.status(400).json({ error: 'Names must be 3-20 characters: letters, numbers, spaces, underscores only.' });
+      }
+      if (lastName && !validateName(lastName)) {
+        return res.status(400).json({ error: 'Last name must be 3-20 characters: letters, numbers, spaces, underscores only.' });
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'countryId') && !countryId) {
+        return res.status(400).json({ error: 'Country is required.' });
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'dob') && !dob) {
+        return res.status(400).json({ error: 'DOB is required.' });
+      }
 
       const userId = decoded.userId;
+      const updates = ['first_name = ?', 'last_name = ?', 'nickname = ?'];
+      const values = [firstName, lastName || null, nickname];
+
+      if (Object.prototype.hasOwnProperty.call(body, 'countryId')) {
+        updates.push('country_id = ?');
+        values.push(parseInt(countryId, 10));
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'dob')) {
+        updates.push('dob = ?');
+        values.push(dob);
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'gender')) {
+        updates.push('gender = ?');
+        values.push(gender || null);
+      }
+      values.push(userId);
 
       const [result] = await pool.query(
-        'UPDATE users SET first_name = ?, last_name = ?, nickname = ? WHERE id = ?',
-        [firstName, lastName || null, nickname, userId]
+        `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+        values
       );
 
       if (result.affectedRows === 0) return res.status(404).json({ error: 'User not found.' });
 
       const [rows] = await pool.query(
-        'SELECT id, first_name, last_name, nickname, email, token_version FROM users WHERE id = ?',
+        'SELECT id, first_name, last_name, nickname, email, token_version, country_id, dob, gender FROM users WHERE id = ?',
         [userId]
       );
       const user = rows[0];
@@ -59,7 +96,21 @@ export default async function handler(req, res) {
         mustResetPassword: !!decoded.mustResetPassword,
       });
       setAuthCookie(res, token);
-      return res.json({ ok: true });
+      return res.json({
+        ok: true,
+        user: {
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          nickname: user.nickname,
+          email: user.email,
+          country_id: user.country_id,
+          dob: user.dob,
+          gender: user.gender,
+          profileComplete: isRegisteredProfileComplete(user),
+          missingProfileFields: getMissingProfileFields(user),
+        },
+      });
     }
 
     return res.status(400).json({ error: 'Unsupported user type.' });

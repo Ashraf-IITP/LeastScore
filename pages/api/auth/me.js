@@ -1,5 +1,10 @@
 // pages/api/auth/me.js — Return current user from JWT cookie
-import { getUserFromRequest, buildDisplayName } from '../../../lib/auth';
+import {
+  getUserFromRequest,
+  buildDisplayName,
+  isRegisteredProfileComplete,
+  getMissingProfileFields,
+} from '../../../lib/auth';
 import { getPool } from '../../../lib/db';
 
 async function getUserColumns(pool) {
@@ -30,8 +35,11 @@ function userSelectList(columns) {
   const mustResetPassword = columns.has('must_reset_password')
     ? 'must_reset_password'
     : '0 AS must_reset_password';
+  const countryId = columns.has('country_id') ? 'country_id' : 'NULL AS country_id';
+  const dob = columns.has('dob') ? 'dob' : 'NULL AS dob';
+  const gender = columns.has('gender') ? 'gender' : 'NULL AS gender';
 
-  return `id, ${firstName}, ${lastName}, ${nickname}, ${email}, ${authProvider}, ${tokenVersion}, ${mustResetPassword}`;
+  return `id, ${firstName}, ${lastName}, ${nickname}, ${email}, ${authProvider}, ${tokenVersion}, ${mustResetPassword}, ${countryId}, ${dob}, ${gender}`;
 }
 
 export default async function handler(req, res) {
@@ -83,6 +91,11 @@ export default async function handler(req, res) {
           email:             u.email,
           auth_provider:     u.auth_provider,
           mustResetPassword: !!u.must_reset_password,
+          country_id:         u.country_id,
+          dob:                u.dob,
+          gender:             u.gender,
+          profileComplete:    isRegisteredProfileComplete(u),
+          missingProfileFields: getMissingProfileFields(u),
         },
       });
   } catch (err) {

@@ -9,10 +9,10 @@ import { clearGuestUpgradeIntent } from '../../../lib/guestUpgradeIntent';
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { email, firstName, lastName, nickname, password, guestSessionId } = req.body || {};
+  const { email, firstName, lastName, nickname, password, guestSessionId, countryId, dob, gender } = req.body || {};
 
-  if (!email || !firstName || !nickname || !password) {
-    return res.status(400).json({ error: 'Email, first name, nickname, and password are required.' });
+  if (!email || !firstName || !nickname || !password || !countryId || !dob) {
+    return res.status(400).json({ error: 'Email, first name, nickname, country, DOB, and password are required.' });
   }
   const normalizedEmail = email.trim().toLowerCase();
   if (!validateEmail(normalizedEmail)) {
@@ -65,9 +65,18 @@ export default async function handler(req, res) {
 
     const passwordHash = await hashPassword(password);
     const [result] = await pool.query(
-      `INSERT INTO users (first_name, last_name, nickname, email, auth_provider, password_hash)
-       VALUES (?, ?, ?, ?, 'local', ?)`,
-      [firstName, lastName || null, nickname, normalizedEmail, passwordHash]
+      `INSERT INTO users (first_name, last_name, nickname, email, auth_provider, password_hash, country_id, dob, gender)
+       VALUES (?, ?, ?, ?, 'local', ?, ?, ?, ?)`,
+      [
+        firstName,
+        lastName || null,
+        nickname,
+        normalizedEmail,
+        passwordHash,
+        countryId ? parseInt(countryId, 10) : null,
+        dob || null,
+        gender || null,
+      ]
     );
     const userId = result.insertId;
 

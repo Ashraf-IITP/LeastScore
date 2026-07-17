@@ -1,6 +1,13 @@
 // pages/api/auth/login.js — Login with email + password
 import { getPool } from '../../../lib/db';
-import { verifyPassword, signJWT, setAuthCookie, buildRegisteredJWTPayload } from '../../../lib/auth';
+import {
+  verifyPassword,
+  signJWT,
+  setAuthCookie,
+  buildRegisteredJWTPayload,
+  isRegisteredProfileComplete,
+  getMissingProfileFields,
+} from '../../../lib/auth';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -15,7 +22,8 @@ export default async function handler(req, res) {
   try {
     const pool = getPool();
     const [rows] = await pool.query(
-      `SELECT id, first_name, last_name, nickname, email, password_hash, token_version, auth_provider, must_reset_password
+      `SELECT id, first_name, last_name, nickname, email, password_hash, token_version, auth_provider,
+              must_reset_password, country_id, dob, gender
        FROM users WHERE email = ? LIMIT 1`,
       [normalizedEmail]
     );
@@ -54,6 +62,11 @@ export default async function handler(req, res) {
         nickname: user.nickname,
         email: user.email,
         displayName: jwtPayload.displayName,
+        country_id: user.country_id,
+        dob: user.dob,
+        gender: user.gender,
+        profileComplete: isRegisteredProfileComplete(user),
+        missingProfileFields: getMissingProfileFields(user),
       },
     });
   } catch (err) {

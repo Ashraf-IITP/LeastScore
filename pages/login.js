@@ -50,6 +50,14 @@ function SuitParticle({ suit, style }) {
   return <div className="suit-particle" style={style}>{suit}</div>;
 }
 
+function toDateInputValue(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value.slice(0, 10);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+}
+
 // ── Main component ────────────────────────────────────────────
 export default function Login() {
   const router = useRouter();
@@ -139,6 +147,15 @@ export default function Login() {
           setUpgradeGuestSessionId(d.user.guestSessionId || null);
           setView('main');
           setChecking(false);
+        } else if (d.user.type === 'registered' && d.user.profileComplete === false) {
+          setRegName(d.user.first_name || '');
+          setRegTag(d.user.last_name || '');
+          setGuestName(d.user.nickname || '');
+          setCountryId(d.user.country_id ? String(d.user.country_id) : '');
+          setDob(toDateInputValue(d.user.dob));
+          setGender(d.user.gender || '');
+          setView('complete-profile');
+          setChecking(false);
         } else {
           router.replace('/');
         }
@@ -216,6 +233,16 @@ export default function Login() {
     if (d.error) return setError(d.error);
     if (d.token) saveToken(d.token);
     if (d.mustResetPassword) return router.replace('/reset-password');
+    if (d.user?.profileComplete === false) {
+      setRegName(d.user.first_name || '');
+      setRegTag(d.user.last_name || '');
+      setGuestName(d.user.nickname || '');
+      setCountryId(d.user.country_id ? String(d.user.country_id) : '');
+      setDob(toDateInputValue(d.user.dob));
+      setGender(d.user.gender || '');
+      setView('complete-profile');
+      return;
+    }
     router.replace('/');
   });
 
@@ -277,6 +304,22 @@ export default function Login() {
     });
     if (d.error) return setError(d.error);
     if (d.token) saveToken(d.token);
+    router.replace('/');
+  });
+
+  const handleCompleteProfile = () => go(async () => {
+    const d = await post('/api/auth/settings', {
+      firstName: regName,
+      lastName: regTag,
+      nickname: guestName,
+      countryId,
+      dob,
+      gender,
+    });
+    if (d.error) return setError(d.error);
+    if (d.user?.profileComplete === false) {
+      return setError('Please fill all required profile fields before continuing.');
+    }
     router.replace('/');
   });
 
@@ -1150,6 +1193,39 @@ export default function Login() {
               )}
 
               {/* ── GUEST VIEW ── */}
+              {view === 'complete-profile' && (
+                <div className="view-animate">
+                  <h2 className="view-title">Complete Profile</h2>
+                  <p className="view-desc">Please complete your profile details before playing.</p>
+                  <div className="input-row">
+                    <div style={{ flex: 1 }}><Field label="First Name" value={regName} onChange={setRegName} placeholder="First Name" maxLength={20} required /></div>
+                    <div style={{ flex: 1 }}><Field label="Last Name" value={regTag} onChange={setRegTag} placeholder="Last Name" maxLength={20} /></div>
+                  </div>
+                  <Field label="Nickname" value={guestName} onChange={setGuestName} placeholder="CoolNickname" maxLength={20} required />
+                  <div className="input-row">
+                    <div style={{ flex: 1 }}>
+                      <Field label="DOB" type="date" value={dob} onChange={setDob} required />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="input-group">
+                        <label>Gender</label>
+                        <select value={gender} onChange={e => setGender(e.target.value)} style={{ width: '100%', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', color: '#F0F4FF', padding: '13px 15px', borderRadius: '13px', fontSize: '15px', outline: 'none' }}>
+                          <option value="">Select Gender</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <CountrySelect value={countryId} onChange={setCountryId} required />
+
+                  <button className="btn-gold mt-4" onClick={handleCompleteProfile} disabled={loading || !regName || !guestName || !countryId || !dob}>
+                    {loading ? 'Saving...' : 'Save Profile & Play'}
+                  </button>
+                </div>
+              )}
+
               {view === 'guest' && (
                 <div className="view-animate">
                   <button className="btn-back" onClick={() => changeView('main')}>← Back</button>

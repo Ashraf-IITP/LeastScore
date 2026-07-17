@@ -2971,6 +2971,8 @@ export default function Home() {
                 } else if (data.user.mustResetPassword) {
                     // Temp password used — force them to set a new one before playing
                     router.replace('/reset-password');
+                } else if (data.user.type === 'registered' && data.user.profileComplete === false) {
+                    router.replace('/login?completeProfile=1');
                 } else {
                     setUsername(data.user.displayName || data.user.nickname || data.user.first_name || '');
                     setUserId(data.user.userId || data.user.id || null);
