@@ -60,6 +60,9 @@ export default async function handler(req, res) {
       if (Object.prototype.hasOwnProperty.call(body, 'dob') && !dob) {
         return res.status(400).json({ error: 'DOB is required.' });
       }
+      if (Object.prototype.hasOwnProperty.call(body, 'gender') && !gender) {
+        return res.status(400).json({ error: 'Gender is required.' });
+      }
 
       const userId = decoded.userId;
       const updates = ['first_name = ?', 'last_name = ?', 'nickname = ?'];
@@ -75,7 +78,7 @@ export default async function handler(req, res) {
       }
       if (Object.prototype.hasOwnProperty.call(body, 'gender')) {
         updates.push('gender = ?');
-        values.push(gender || null);
+        values.push(gender);
       }
       values.push(userId);
 

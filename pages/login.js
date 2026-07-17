@@ -1171,7 +1171,7 @@ export default function Login() {
                         </div>
                         <div style={{ flex: 1 }}>
                           <div className="input-group">
-                            <label>Gender</label>
+                            <label>Gender<span style={{ color: '#FF5A5A', marginLeft: '3px' }}>*</span></label>
                             <select value={gender} onChange={e => setGender(e.target.value)} style={{ width: '100%', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', color: '#F0F4FF', padding: '13px 15px', borderRadius: '13px', fontSize: '15px', outline: 'none' }}>
                               <option value="">Select Gender</option>
                               <option value="male">Male</option>
@@ -1184,7 +1184,7 @@ export default function Login() {
                       <CountrySelect value={countryId} onChange={setCountryId} required />
                       <Field label="Password" type="password" value={signupPass} onChange={setSignupPass} placeholder="At least 6 characters" required />
                       
-                      <button className="btn-gold mt-4" onClick={handleSignupRegister} disabled={loading || !regName || !guestName || !countryId || !dob || signupPass.length < 6}>
+                      <button className="btn-gold mt-4" onClick={handleSignupRegister} disabled={loading || !regName || !guestName || !countryId || !dob || !gender || signupPass.length < 6}>
                         {loading ? 'Creating…' : 'Create Account & Play 🎮'}
                       </button>
                     </>
@@ -1208,7 +1208,7 @@ export default function Login() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div className="input-group">
-                        <label>Gender</label>
+                        <label>Gender<span style={{ color: '#FF5A5A', marginLeft: '3px' }}>*</span></label>
                         <select value={gender} onChange={e => setGender(e.target.value)} style={{ width: '100%', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', color: '#F0F4FF', padding: '13px 15px', borderRadius: '13px', fontSize: '15px', outline: 'none' }}>
                           <option value="">Select Gender</option>
                           <option value="male">Male</option>
@@ -1220,7 +1220,7 @@ export default function Login() {
                   </div>
                   <CountrySelect value={countryId} onChange={setCountryId} required />
 
-                  <button className="btn-gold mt-4" onClick={handleCompleteProfile} disabled={loading || !regName || !guestName || !countryId || !dob}>
+                  <button className="btn-gold mt-4" onClick={handleCompleteProfile} disabled={loading || !regName || !guestName || !countryId || !dob || !gender}>
                     {loading ? 'Saving...' : 'Save Profile & Play'}
                   </button>
                 </div>
@@ -1316,7 +1316,7 @@ export default function Login() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div className="input-group">
-                        <label>Gender</label>
+                        <label>Gender<span style={{ color: '#FF5A5A', marginLeft: '3px' }}>*</span></label>
                         <select value={gender} onChange={e => setGender(e.target.value)} style={{ width: '100%', background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', color: '#F0F4FF', padding: '13px 15px', borderRadius: '13px', fontSize: '15px', outline: 'none' }}>
                           <option value="">Select Gender</option>
                           <option value="male">Male</option>
@@ -1328,7 +1328,7 @@ export default function Login() {
                   </div>
                   <CountrySelect value={countryId} onChange={setCountryId} required />
                   <p className="field-hint">Please verify your details above.</p>
-                  <button className="btn-gold" onClick={handleOAuthUsername} disabled={loading || !regName || !guestName || !countryId || !dob}>
+                  <button className="btn-gold" onClick={handleOAuthUsername} disabled={loading || !regName || !guestName || !countryId || !dob || !gender}>
                     {loading ? 'Saving…' : 'Complete Profile & Play 🎮'}
                   </button>
                 </div>

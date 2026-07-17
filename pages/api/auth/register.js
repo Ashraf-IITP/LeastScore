@@ -11,8 +11,8 @@ export default async function handler(req, res) {
 
   const { email, firstName, lastName, nickname, password, guestSessionId, countryId, dob, gender } = req.body || {};
 
-  if (!email || !firstName || !nickname || !password || !countryId || !dob) {
-    return res.status(400).json({ error: 'Email, first name, nickname, country, DOB, and password are required.' });
+  if (!email || !firstName || !nickname || !password || !countryId || !dob || !gender) {
+    return res.status(400).json({ error: 'Email, first name, nickname, country, DOB, gender, and password are required.' });
   }
   const normalizedEmail = email.trim().toLowerCase();
   if (!validateEmail(normalizedEmail)) {
