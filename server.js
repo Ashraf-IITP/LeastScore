@@ -501,7 +501,7 @@ nextApp.prepare().then(() => {
       }
       if (decoded?.type === 'registered' && decoded.userId) {
         socket.userId = decoded.userId;
-        socket.displayName = decoded.displayName
+        socket.displayName = socket.handshake.auth?.username
           || buildDisplayName(decoded.first_name, decoded.last_name, decoded.nickname)
           || decoded.email
           || 'Player';
